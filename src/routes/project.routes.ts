@@ -1,0 +1,14 @@
+import { Router } from "express";
+import * as controller from "../controllers/project.controller.js";
+import { requireAuth } from "../middleware/auth.js";
+import { requireActiveMembership } from "../middleware/membership.js";
+export const projectRouter = Router();
+projectRouter.use(requireAuth);
+projectRouter.get("/", controller.list);
+projectRouter.post("/", requireActiveMembership, controller.create);
+projectRouter.patch("/:projectId", requireActiveMembership, controller.update);
+projectRouter.delete("/:projectId", controller.remove);
+projectRouter.post("/:projectId/duplicate", requireActiveMembership, controller.duplicate);
+projectRouter.post("/:projectId/archive", requireActiveMembership, controller.update);
+projectRouter.post("/:projectId/favorite", requireActiveMembership, controller.update);
+projectRouter.get("/:projectId/messages", controller.messages);
