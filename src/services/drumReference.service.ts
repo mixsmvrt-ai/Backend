@@ -1,7 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Midi } from "@tonejs/midi";
+import MidiPackage from "@tonejs/midi";
+
+const { Midi } = MidiPackage;
 
 type DrumRole = "kick" | "snare" | "hat" | "rim" | "percussion";
 
