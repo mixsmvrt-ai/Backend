@@ -8,6 +8,7 @@ import { writeMidi } from "../midi/midi-writer.js";
 import { assertCreditsAvailable, recordCreditUsage, TEXT_TO_MIDI_CREDIT_COST, VOICE_TO_MIDI_CREDIT_COST } from "./credit.service.js";
 import { drumReferencePrompt } from "./drumReference.service.js";
 import { midiAnalysisService } from "./midiAnalysisService.js";
+import { modelSelector } from "./ai/modelSelector.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -29,6 +30,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   const workflow = input.workflow ?? "text_to_midi";
   const creditCost = workflowCreditCost(workflow);
   await assertCreditsAvailable(userId, creditCost);
+  const selection = await modelSelector.forUser(userId);
   const db = requireSupabase();
   let contextualPrompt = input.prompt;
   if (input.projectId) {
@@ -47,7 +49,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   if (generationError) throw generationError;
   try {
     const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
-    const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, env.AI_PROVIDER_MODEL ?? env.AI_PRO_MODEL);
+    const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, env.AI_PROVIDER_MODEL ?? selection.primaryModel);
     const music = await provider.compose(buildMusicPrompt(contextualInput, referencePrompt), controller.signal).finally(() => clearTimeout(timer));
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: input.genre ?? null, mood: input.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;
     const file = writeMidi(music); const fileName = midiFileNameFromTrackName(music.trackName); const storagePath = `${userId}/${generation.id}/${fileName}`;
