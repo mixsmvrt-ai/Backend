@@ -17,8 +17,10 @@ import { pitchRouter } from "./routes/pitch.routes.js";
 import { musicRouter } from "./routes/music.routes.js";
 import { aiRouter } from "./routes/ai.routes.js";
 import { songPackRouter } from "./routes/songPack.routes.js";
+import { musicBrainService } from "./services/musicBrainService.js";
 
 export const app = express();
+void musicBrainService.preload();
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ALLOWED_ORIGINS.split(","), credentials: true }));
 app.use(express.json({ limit: "1mb" }));

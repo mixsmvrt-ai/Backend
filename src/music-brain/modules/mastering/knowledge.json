@@ -1,0 +1,7 @@
+{
+  "basics": [
+    "Leave headroom in the beat stage instead of solving balance issues with limiting.",
+    "A darker melodic beat usually needs controlled top end, not extra brightness in mastering.",
+    "Check mono compatibility on wide pads and bell layers before pushing loudness."
+  ]
+}

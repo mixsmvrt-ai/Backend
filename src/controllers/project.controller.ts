@@ -2,10 +2,42 @@ import type { Response } from "express";
 import { z } from "zod";
 import { requireSupabase } from "../config/supabase.js";
 import type { AuthRequest } from "../middleware/auth.js";
+import { orchestrateGeneration } from "../services/orchestration.service.js";
+import { midiAnalysisService } from "../services/midiAnalysisService.js";
+import { musicBrainService } from "../services/musicBrainService.js";
+import { orchestrationSchema } from "../domain/music.js";
 
 const projectSchema = z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""), tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]), genre: z.string().max(80).nullable().optional(), bpm: z.number().int().min(40).max(240).nullable().optional(), musicalKey: z.string().max(24).nullable().optional() });
 const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().optional(), archived: z.boolean().optional() });
+const messageSchema = z.object({
+	content: z.string().trim().min(1).max(2000),
+	generation: z.object({
+		kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]),
+		key: z.string().max(12).optional(),
+		scale: z.string().max(40).optional(),
+		tempo: z.number().int().min(40).max(240).optional(),
+		lengthBars: z.number().int().min(1).max(128).default(8),
+		complexity: z.enum(["low", "medium", "high"]).default("medium"),
+		variationAmount: z.number().min(0).max(1).default(0.5),
+		timeSignature: z.tuple([z.number().int().min(1).max(12), z.number().int().min(1).max(16)]).default([4, 4]),
+	}).optional(),
+});
 function failure(response: Response, error: unknown) { return response.status(500).json({ error: error instanceof Error ? error.message : "Unable to complete request" }); }
+
+function looksLikeMusicQuestion(prompt: string) {
+	return /(\?|\bwhat\b|\bwhich\b|\bwhy\b|\bhow\b|\bshould\b|\bplugin\b|\bpreset\b|\bsound\b|\blayer\b|\barrangement\b|\beq\b|\breverb\b|\b808\b|\bbass\b|\bscale\b|\bkey\b|\bchord\b|\bcounter\b)/i.test(prompt);
+}
+
+export async function read(request: AuthRequest, response: Response) {
+	try {
+		const db = requireSupabase();
+		const { data, error } = await db.from("projects").select("*, project_tags(tag)").eq("id", request.params.projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
+		if (error) return response.status(404).json({ error: "Project not found" });
+		response.json({ data });
+	} catch (error) {
+		return failure(response, error);
+	}
+}
 
 export async function list(request: AuthRequest, response: Response) { try { const db = requireSupabase(); const page = Math.max(Number(request.query.page ?? 1), 1); const size = Math.min(Math.max(Number(request.query.size ?? 20), 1), 100); const query = String(request.query.query ?? ""); const sort = request.query.sort === "created_at" ? "created_at" : "updated_at"; let builder = db.from("projects").select("*, project_tags(tag)", { count: "exact" }).eq("user_id", request.user!.id).is("deleted_at", null).is("archived_at", null).range((page - 1) * size, page * size - 1).order(sort, { ascending: false }); if (query) builder = builder.ilike("title", `%${query}%`); const { data, count, error } = await builder; if (error) throw error; response.json({ data, meta: { page, size, total: count ?? 0 } }); } catch (error) { return failure(response, error); } }
 export async function create(request: AuthRequest, response: Response) { try { const body = projectSchema.parse(request.body); const db = requireSupabase(); const { data, error } = await db.from("projects").insert({ user_id: request.user!.id, title: body.title, description: body.description, genre: body.genre ?? null, bpm: body.bpm ?? null, musical_key: body.musicalKey ?? null }).select().single(); if (error) throw error; if (body.tags.length) { const { error: tagsError } = await db.from("project_tags").insert(body.tags.map((tag) => ({ project_id: data.id, user_id: request.user!.id, tag }))); if (tagsError) throw tagsError; } await db.from("activity_log").insert({ user_id: request.user!.id, action: "created", entity_type: "project", entity_id: data.id }); response.status(201).json({ data }); } catch (error) { return failure(response, error); } }
@@ -29,6 +61,76 @@ export async function messages(request: AuthRequest, response: Response) {
 			.order("created_at", { ascending: true });
 		if (error) throw error;
 		response.json({ data });
+	} catch (error) {
+		return failure(response, error);
+	}
+}
+
+export async function createMessage(request: AuthRequest, response: Response) {
+	const parsed = messageSchema.safeParse(request.body);
+	if (!parsed.success) return response.status(422).json({ error: "Invalid project message", details: parsed.error.flatten() });
+
+	try {
+		const db = requireSupabase();
+		const { data: project, error: projectError } = await db.from("projects").select("id, genre, mood, bpm, musical_key").eq("id", request.params.projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
+		if (projectError || !project) return response.status(404).json({ error: "Project not found" });
+
+		const analysis = await midiAnalysisService.getOrCreateLatestProjectAnalysis(request.user!.id, request.params.projectId);
+		const shouldAnswerWithMusicBrain = analysis && looksLikeMusicQuestion(parsed.data.content);
+
+		if (!shouldAnswerWithMusicBrain) {
+			const generationInput = orchestrationSchema.parse({
+				prompt: parsed.data.content,
+				kind: parsed.data.generation?.kind ?? "melody",
+				workflow: "text_to_midi",
+				key: parsed.data.generation?.key,
+				scale: parsed.data.generation?.scale?.toLowerCase(),
+				tempo: parsed.data.generation?.tempo ?? project.bpm ?? undefined,
+				projectId: request.params.projectId,
+				lengthBars: parsed.data.generation?.lengthBars ?? 8,
+				complexity: parsed.data.generation?.complexity ?? "medium",
+				variationAmount: parsed.data.generation?.variationAmount ?? 0.5,
+				timeSignature: parsed.data.generation?.timeSignature ?? [4, 4],
+				genre: project.genre ?? undefined,
+				mood: project.mood ?? undefined,
+			});
+
+			const generation = await orchestrateGeneration(request.user!.id, generationInput);
+			return response.status(201).json({ data: { mode: "generation", generation } });
+		}
+
+		const { error: userMessageError } = await db.from("project_messages").insert({ project_id: request.params.projectId, user_id: request.user!.id, role: "user", content: parsed.data.content });
+		if (userMessageError) throw userMessageError;
+
+		const reply = await musicBrainService.reply({
+			projectId: request.params.projectId,
+			userId: request.user!.id,
+			prompt: parsed.data.content,
+			analysis,
+			projectGenre: project.genre ?? null,
+			projectMood: project.mood ?? null,
+		});
+
+		const { data: assistantMessage, error: assistantMessageError } = await db.from("project_messages").insert({ project_id: request.params.projectId, user_id: request.user!.id, role: "assistant", content: reply.content }).select("id, role, content, generation_id, created_at").single();
+		if (assistantMessageError) throw assistantMessageError;
+
+		await musicBrainService.updateConversationContext({
+			projectId: request.params.projectId,
+			userId: request.user!.id,
+			question: parsed.data.content,
+			assistantReply: reply.content,
+			pluginNames: reply.pluginRecommendations.map((recommendation) => recommendation.plugin),
+		});
+
+		response.status(201).json({
+			data: {
+				mode: "assistant",
+				message: assistantMessage,
+				recommendedDelayMs: reply.recommendedDelayMs,
+				analysis,
+				pluginRecommendations: reply.pluginRecommendations,
+			},
+		});
 	} catch (error) {
 		return failure(response, error);
 	}
