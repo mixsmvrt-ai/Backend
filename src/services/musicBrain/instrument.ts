@@ -22,10 +22,12 @@ export function recommendedPlugins(instruments: string[], genre: SupportedGenre,
 }
 
 function presetFor(instrument: string, mood: SupportedMood) {
-  if (instrument === "808") return mood === "Dark" ? "Distorted Sub 808" : "Clean Sub 808";
-  if (/piano|rhodes/i.test(instrument)) return mood === "Sad" || mood === "Emotional" ? "Soft Felt Keys" : "Warm Keys";
-  if (/bell|choir|strings/i.test(instrument)) return mood === "Dark" ? "Dark Ambient Layer" : "Wide Cinematic Layer";
-  return `${mood} ${instrument}`;
+  if (instrument === "808") return mood === "Dark" ? "dark 808 / sub bass" : "clean 808 / sub bass";
+  if (/piano|rhodes/i.test(instrument)) return mood === "Sad" || mood === "Emotional" ? "felt or soft piano" : "warm or bright piano";
+  if (/guitar/i.test(instrument)) return mood === "Dark" ? "clean electric guitar" : "ambient or melodic guitar";
+  if (/bell|choir|strings/i.test(instrument)) return mood === "Dark" ? "dark ambient layer" : "cinematic layer";
+  if (/pad|synth/i.test(instrument)) return mood === "Dreamy" ? "ambient pad" : "supporting synth texture";
+  return `${mood.toLowerCase()} ${instrument.toLowerCase()} category`;
 }
 
 function alternativeFor(instrument: string) {

@@ -33,14 +33,16 @@ function findInstrumentHint(instruments: InstrumentKnowledge[], category: string
 }
 
 export class PluginRecommendationService {
-  async recommend(input: { analysis: MidiAnalysisSummary; genre: string | null; question: string }) {
+  async recommend(input: { analysis: MidiAnalysisSummary; genre: string | null; question: string; preferredCategories?: string[] }) {
     const knowledge = await loadMusicBrainKnowledge();
-    const category = categoryForAnalysis(input.analysis, input.question);
+    const preferredCategory = input.preferredCategories?.find(Boolean);
+    const category = preferredCategory ?? categoryForAnalysis(input.analysis, input.question);
     const instrumentHint = findInstrumentHint(knowledge.instruments, category);
     const ranked = knowledge.plugins
       .map((plugin) => {
         let score = 0;
         if (plugin.soundCategories.some((soundCategory) => soundCategory.toLowerCase().includes(category.toLowerCase()))) score += 5;
+        if (input.preferredCategories?.some((preferred) => plugin.soundCategories.some((soundCategory) => soundCategory.toLowerCase().includes(preferred.toLowerCase())))) score += 3;
         if (genreMatches(plugin, input.genre)) score += 3;
         if (moodMatches(plugin, input.analysis.emotionalProfile)) score += 2;
         if (plugin.producerUseCases.some((useCase) => useCase.toLowerCase().includes("main") || useCase.toLowerCase().includes("layer"))) score += 1;

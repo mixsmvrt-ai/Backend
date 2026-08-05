@@ -14,6 +14,8 @@ ${context.tempoAdvisory ? `Tempo advisory: ${context.tempoAdvisory.message}` : "
 Generation instructions:
 - Write an original ${context.generationType.toLowerCase()}.
 - Preserve the requested genre, mood, key, scale, tempo, and instrument direction.
+- Treat any artist reference as a vibe translation only, using high-level musical characteristics rather than source material.
+- Never copy, imitate, or reconstruct recognizable melodies, hooks, chord progressions, note sequences, or signature phrases from existing songs.
 - Use MIDI pitch integers, beat-based timing from zero, positive durations, and velocity 1-127.
 - Keep the arrangement musical, playable, and production-ready.
 - Use practical plugin category recommendations only. Do not name proprietary preset names.

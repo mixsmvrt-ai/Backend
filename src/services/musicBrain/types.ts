@@ -18,6 +18,56 @@ export interface PluginRecommendation {
   alternative: string;
 }
 
+export interface ArtistTempoRange {
+  min: number;
+  max: number;
+  default: number;
+}
+
+export interface ArtistProfile {
+  slug: string;
+  name: string;
+  aliases: string[];
+  region: string;
+  primaryGenres: string[];
+  tempoRange: ArtistTempoRange;
+  keyPreferences: string[];
+  scalePreferences: string[];
+  instrumentPreferences: string[];
+  melodyDensity: string;
+  rhythmStyle: string;
+  energy: string;
+  mood: string[];
+  arrangementTendencies: string[];
+  productionTraits: string[];
+  pluginCategories: string[];
+  active: boolean;
+}
+
+export interface ArtistProfileMatch {
+  profile: ArtistProfile;
+  score: number;
+}
+
+export interface ArtistBlendContext {
+  requestedArtists: string[];
+  profiles: ArtistProfile[];
+  primaryGenres: string[];
+  tempoRange: ArtistTempoRange;
+  keyPreferences: string[];
+  scalePreferences: string[];
+  instrumentPreferences: string[];
+  melodyDensity: string;
+  rhythmStyle: string;
+  energy: string;
+  mood: string[];
+  arrangementTendencies: string[];
+  productionTraits: string[];
+  pluginCategories: string[];
+  summary: string;
+  supportedMood?: SupportedMood;
+}
+
 export interface GenreProfile {
   id: string;
   name: string;
@@ -59,6 +109,7 @@ export interface MusicContext {
   enhancedPrompt: string;
   genre: SupportedGenre;
   genreProfile: GenreProfile | null;
+  artistBlend?: ArtistBlendContext | null;
   mood: SupportedMood;
   tempo: number;
   tempoAdvisory?: TempoAdvisory | null;
