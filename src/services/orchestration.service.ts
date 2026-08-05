@@ -7,6 +7,7 @@ import { requireSupabase } from "../config/supabase.js";
 import { writeMidi } from "../midi/midi-writer.js";
 import { assertCreditsAvailable, recordCreditUsage, TEXT_TO_MIDI_CREDIT_COST, VOICE_TO_MIDI_CREDIT_COST } from "./credit.service.js";
 import { drumReferencePrompt } from "./drumReference.service.js";
+import { midiAnalysisService } from "./midiAnalysisService.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -52,6 +53,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     const file = writeMidi(music); const fileName = midiFileNameFromTrackName(music.trackName); const storagePath = `${userId}/${generation.id}/${fileName}`;
     const { error: storageError } = await db.storage.from("midi-exports").upload(storagePath, file, { contentType: "audio/midi", upsert: false }); if (storageError) throw storageError;
     const { error: fileError } = await db.from("generation_files").insert({ generation_id: generation.id, user_id: userId, storage_path: storagePath, file_name: fileName, mime_type: "audio/midi", file_size_bytes: file.length }); if (fileError) throw fileError;
+    await midiAnalysisService.persistAnalysis(file, { generationId: generation.id, projectId: input.projectId ?? null, userId, fileName, genre: input.genre ?? null, mood: input.mood ?? null });
     await recordCreditUsage(userId, creditCost, workflow === "voice_to_midi" ? "voice_to_midi_generation" : "text_to_midi_generation", { generationId: generation.id, workflow, kind: input.kind, projectId: input.projectId ?? null, promptLength: input.prompt.length });
     if (music.pluginRecommendations.length) { const { error: recommendationsError } = await db.from("plugin_recommendations").insert(music.pluginRecommendations.map((recommendation) => ({ generation_id: generation.id, instrument_type: recommendation.instrumentType, preset_type: recommendation.presetType, genre_match: recommendation.genreMatch, mood_match: recommendation.moodMatch, alternative_plugin: recommendation.alternative }))); if (recommendationsError) throw recommendationsError; }
     if (input.projectId) { const { count, error: countError } = await db.from("project_versions").select("id", { count: "exact", head: true }).eq("project_id", input.projectId).eq("user_id", userId); if (countError) throw countError; const { error: versionError } = await db.from("project_versions").insert({ project_id: input.projectId, user_id: userId, version_number: (count ?? 0) + 1, prompt: input.prompt, parameters: input, generation_id: generation.id }); if (versionError) throw versionError; }
