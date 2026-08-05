@@ -1,0 +1,16 @@
+import { Router } from "express";
+import * as controller from "../controllers/generation.controller.js";
+import { requireAuth } from "../middleware/auth.js";
+import { requireActiveMembership } from "../middleware/membership.js";
+export const generationRouter = Router();
+generationRouter.use(requireAuth);
+generationRouter.get("/", controller.list);
+generationRouter.post("/", requireActiveMembership, controller.create);
+generationRouter.post("/generate", requireActiveMembership, controller.create);
+generationRouter.post("/voice-upload", requireActiveMembership, controller.voiceUpload);
+generationRouter.get("/:generationId", controller.read);
+generationRouter.get("/:generationId/exports", controller.exports);
+generationRouter.delete("/:generationId", controller.remove);
+generationRouter.post("/:generationId/favorite", controller.favorite);
+generationRouter.post("/:generationId/duplicate", requireActiveMembership, controller.regenerate);
+generationRouter.post("/:generationId/regenerate", requireActiveMembership, controller.regenerate);

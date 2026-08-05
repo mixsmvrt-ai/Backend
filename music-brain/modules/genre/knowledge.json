@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Modern Trap Dancehall",
+    "bpm": [95, 110],
+    "commonScales": ["Natural Minor", "Minor Pentatonic", "Phrygian"],
+    "commonChordMovement": ["i-VI-VII", "i-v-VI", "i-VII-VI"],
+    "typicalInstruments": ["felt piano", "dark piano", "bell", "808", "percussion"],
+    "layeringTechniques": ["felt piano plus dark bell", "mono lead plus wide pad"],
+    "melodyDensity": "medium",
+    "rhythmStyle": "syncopated and bouncy",
+    "bassBehavior": "call-and-response 808 movement",
+    "arrangementTendencies": ["space in the verse", "wider chorus textures"]
+  },
+  {
+    "name": "Dancehall",
+    "bpm": [95, 105],
+    "commonScales": ["Major", "Mixolydian", "Natural Minor"],
+    "commonChordMovement": ["I-V-vi-IV", "i-VII-VI"],
+    "typicalInstruments": ["pluck", "guitar", "keys", "round bass"],
+    "layeringTechniques": ["pluck with short keys", "guitar accent fills"],
+    "melodyDensity": "medium",
+    "rhythmStyle": "offbeat groove",
+    "bassBehavior": "syncopated supporting bass",
+    "arrangementTendencies": ["percussion-forward verse", "hook repetition"]
+  },
+  {
+    "name": "Afrobeats",
+    "bpm": [95, 115],
+    "commonScales": ["Major", "Pentatonic Major", "Mixolydian"],
+    "commonChordMovement": ["I-V-vi-IV", "IV-I-V-vi"],
+    "typicalInstruments": ["guitar", "bell", "soft keys", "bass"],
+    "layeringTechniques": ["guitar with bell top line", "keys with vocal gaps"],
+    "melodyDensity": "medium",
+    "rhythmStyle": "rolling and percussive",
+    "bassBehavior": "elastic melodic bass",
+    "arrangementTendencies": ["call and response hooks", "percussion transitions"]
+  },
+  {
+    "name": "R&B",
+    "bpm": [65, 85],
+    "commonScales": ["Natural Minor", "Dorian", "Major"],
+    "commonChordMovement": ["ii-V-I", "vi-IV-I-V", "i-iv-VII"],
+    "typicalInstruments": ["electric piano", "felt piano", "pad", "sub bass"],
+    "layeringTechniques": ["soft keys with pad sustain", "electric piano with vocal-friendly gaps"],
+    "melodyDensity": "low",
+    "rhythmStyle": "laid-back",
+    "bassBehavior": "supportive and smooth",
+    "arrangementTendencies": ["sustained choruses", "sparser verses"]
+  }
+]

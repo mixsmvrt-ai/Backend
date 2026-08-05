@@ -1,0 +1,102 @@
+[
+  {
+    "name": "Omnisphere",
+    "instrumentTypes": ["keys", "pads", "bells", "textures", "leads"],
+    "strengths": ["cinematic mood", "dark textures", "layering depth"],
+    "genres": ["Modern Trap Dancehall", "Trap", "Drill", "R&B", "Pop"],
+    "moods": ["dark", "emotional", "epic", "dreamy"],
+    "cpu": "high",
+    "soundCategories": ["dark keys", "cinematic pad", "bell texture", "airy pluck"],
+    "producerUseCases": ["main melody", "counter layer", "atmospheric bed"]
+  },
+  {
+    "name": "Keyscape",
+    "instrumentTypes": ["piano", "electric piano", "felt piano"],
+    "strengths": ["realistic pianos", "soft dynamics", "intimate tone"],
+    "genres": ["Modern Trap Dancehall", "R&B", "Lo-Fi", "Pop"],
+    "moods": ["emotional", "warm", "intimate", "melancholy"],
+    "cpu": "medium",
+    "soundCategories": ["soft grand", "felt piano", "warm electric piano"],
+    "producerUseCases": ["main keys", "verse progression", "intro motif"]
+  },
+  {
+    "name": "Kontakt",
+    "instrumentTypes": ["piano", "strings", "choir", "hybrid instruments"],
+    "strengths": ["detailed sampling", "expressive acoustic layers", "scoring textures"],
+    "genres": ["Modern Trap Dancehall", "Drill", "R&B", "Pop"],
+    "moods": ["dark", "emotional", "cinematic"],
+    "cpu": "medium",
+    "soundCategories": ["felt piano", "hybrid strings", "choir pad"],
+    "producerUseCases": ["lead layer", "support texture", "chorus lift"]
+  },
+  {
+    "name": "Noire",
+    "instrumentTypes": ["felt piano", "piano"],
+    "strengths": ["felt articulation", "moody realism", "soft attack"],
+    "genres": ["Modern Trap Dancehall", "R&B", "Lo-Fi"],
+    "moods": ["dark", "emotional", "intimate"],
+    "cpu": "medium",
+    "soundCategories": ["felt piano", "pure piano"],
+    "producerUseCases": ["sparse melodies", "ambient intros", "vocal-friendly keys"]
+  },
+  {
+    "name": "Nexus",
+    "instrumentTypes": ["keys", "plucks", "bells", "leads", "pads"],
+    "strengths": ["fast workflow", "mix-ready presets", "radio polish"],
+    "genres": ["Modern Trap Dancehall", "Trap", "Pop", "Afrobeats"],
+    "moods": ["bright", "dark", "catchy", "uplifting"],
+    "cpu": "low",
+    "soundCategories": ["soft grand", "dark piano", "bright bell", "clean pluck"],
+    "producerUseCases": ["quick sketching", "stacking", "hook writing"]
+  },
+  {
+    "name": "Analog Lab",
+    "instrumentTypes": ["keys", "pads", "leads", "basses"],
+    "strengths": ["vintage color", "warm synths", "hybrid keys"],
+    "genres": ["R&B", "Pop", "Trap", "Amapiano"],
+    "moods": ["warm", "dreamy", "emotional"],
+    "cpu": "medium",
+    "soundCategories": ["velvet keys", "analog pad", "soft lead"],
+    "producerUseCases": ["support layer", "hook stack", "bridge texture"]
+  },
+  {
+    "name": "Xpand!2",
+    "instrumentTypes": ["keys", "strings", "bells", "pads"],
+    "strengths": ["low CPU", "classic sketch tones", "utility layering"],
+    "genres": ["Trap", "Dancehall", "Afrobeats", "Pop"],
+    "moods": ["warm", "dark", "simple"],
+    "cpu": "low",
+    "soundCategories": ["soft keys", "air pad", "basic bell"],
+    "producerUseCases": ["draft writing", "low-CPU layers", "counter melody"]
+  },
+  {
+    "name": "Purity",
+    "instrumentTypes": ["keys", "bells", "plucks", "pads"],
+    "strengths": ["nostalgic digital tones", "lightweight workflow", "melodic clarity"],
+    "genres": ["Dancehall", "Afrobeats", "Trap", "Hip-Hop"],
+    "moods": ["sweet", "bright", "nostalgic"],
+    "cpu": "low",
+    "soundCategories": ["digital bell", "thin keys", "vintage pluck"],
+    "producerUseCases": ["top melody", "counter line", "ear candy"]
+  },
+  {
+    "name": "Serum",
+    "instrumentTypes": ["leads", "pads", "plucks", "basses"],
+    "strengths": ["custom sound design", "precise transient control", "modern synthesis"],
+    "genres": ["Trap", "Drill", "Pop", "Amapiano"],
+    "moods": ["aggressive", "bright", "modern"],
+    "cpu": "high",
+    "soundCategories": ["glass pluck", "clean lead", "sub bass", "wide pad"],
+    "producerUseCases": ["custom layer", "lead design", "808 support"]
+  },
+  {
+    "name": "Sylenth1",
+    "instrumentTypes": ["leads", "plucks", "pads", "basses"],
+    "strengths": ["focused analog tone", "fast tweaking", "stable pop synths"],
+    "genres": ["Pop", "Trap", "Dancehall"],
+    "moods": ["bright", "clean", "energetic"],
+    "cpu": "low",
+    "soundCategories": ["analog pluck", "soft lead", "support pad"],
+    "producerUseCases": ["hook doubling", "bright layer", "arp support"]
+  }
+]

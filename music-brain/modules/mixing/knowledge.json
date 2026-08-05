@@ -1,0 +1,16 @@
+{
+  "eq": {
+    "piano": "High-pass gently around the low mids if the 808 needs room, but keep enough body for emotion.",
+    "bell": "Tame the sharp upper-mid spike if the attack starts poking through the vocal range.",
+    "808": "Keep the sub fundamental clear and avoid boosting the same zone as the kick."
+  },
+  "reverb": {
+    "dark": "Use a shorter, darker plate or room so the melody stays intimate.",
+    "wide": "Use a filtered stereo reverb on the support layer instead of drowning the lead itself."
+  },
+  "masking": [
+    "If piano and bell share the same octave, shorten the bell or move it up an octave.",
+    "Keep one lead source narrow in the center and let supporting ambience provide width.",
+    "Leave transient priority to the part that carries the hook."
+  ]
+}
