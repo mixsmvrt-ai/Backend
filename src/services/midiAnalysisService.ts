@@ -61,6 +61,13 @@ type AnalysisRow = {
   summary: MidiAnalysisSummary["summary"];
 };
 
+type GenerationAnalysisBackfillRow = {
+  id: string;
+  project_id: string | null;
+  generation_requests: Array<{ prompt: string; kind: string; settings: { genre?: string; mood?: string } | null }> | null;
+  generation_files: Array<{ file_name: string; storage_path: string }> | null;
+};
+
 const MAJOR_PROFILE = new Set([0, 2, 4, 5, 7, 9, 11]);
 const MINOR_PROFILE = new Set([0, 2, 3, 5, 7, 8, 10]);
 const PHRYGIAN_PROFILE = new Set([0, 1, 3, 5, 7, 8, 10]);
@@ -287,7 +294,7 @@ export class MidiAnalysisService {
     if (existing) return existing;
 
     const db = requireSupabase();
-    const { data: generation, error } = await db
+    const { data: generationData, error } = await db
       .from("generations")
       .select("id, project_id, generation_requests(prompt, kind, settings), generation_files(file_name, storage_path)")
       .eq("user_id", userId)
@@ -298,13 +305,14 @@ export class MidiAnalysisService {
       .maybeSingle();
 
     if (error) throw error;
+    const generation = generationData as GenerationAnalysisBackfillRow | null;
     const file = generation?.generation_files?.[0] as { file_name: string; storage_path: string } | undefined;
     if (!generation || !file) return null;
 
     const { data: download, error: downloadError } = await db.storage.from("midi-exports").download(file.storage_path);
     if (downloadError) throw downloadError;
     const buffer = Buffer.from(await download.arrayBuffer());
-    const settings = generation.generation_requests?.settings as { genre?: string; mood?: string } | undefined;
+    const settings = generation.generation_requests?.[0]?.settings ?? undefined;
     return this.persistAnalysis(buffer, {
       generationId: generation.id,
       projectId: generation.project_id,
