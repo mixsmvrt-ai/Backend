@@ -22,6 +22,13 @@ const messageSchema = z.object({
 		timeSignature: z.tuple([z.number().int().min(1).max(12), z.number().int().min(1).max(16)]).default([4, 4]),
 	}).optional(),
 });
+type ProjectConversationRow = {
+	id: string;
+	genre: string | null;
+	mood: string | null;
+	bpm: number | null;
+	musical_key: string | null;
+};
 function failure(response: Response, error: unknown) { return response.status(500).json({ error: error instanceof Error ? error.message : "Unable to complete request" }); }
 
 function looksLikeMusicQuestion(prompt: string) {
@@ -69,13 +76,16 @@ export async function messages(request: AuthRequest, response: Response) {
 export async function createMessage(request: AuthRequest, response: Response) {
 	const parsed = messageSchema.safeParse(request.body);
 	if (!parsed.success) return response.status(422).json({ error: "Invalid project message", details: parsed.error.flatten() });
+	const projectId = Array.isArray(request.params.projectId) ? request.params.projectId[0] : request.params.projectId;
+	if (!projectId) return response.status(400).json({ error: "Project id is required" });
 
 	try {
 		const db = requireSupabase();
-		const { data: project, error: projectError } = await db.from("projects").select("id, genre, mood, bpm, musical_key").eq("id", request.params.projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
+		const { data: projectData, error: projectError } = await db.from("projects").select("id, genre, mood, bpm, musical_key").eq("id", projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
+		const project = projectData as ProjectConversationRow | null;
 		if (projectError || !project) return response.status(404).json({ error: "Project not found" });
 
-		const analysis = await midiAnalysisService.getOrCreateLatestProjectAnalysis(request.user!.id, request.params.projectId);
+		const analysis = await midiAnalysisService.getOrCreateLatestProjectAnalysis(request.user!.id, projectId);
 		const shouldAnswerWithMusicBrain = analysis && looksLikeMusicQuestion(parsed.data.content);
 
 		if (!shouldAnswerWithMusicBrain) {
@@ -86,7 +96,7 @@ export async function createMessage(request: AuthRequest, response: Response) {
 				key: parsed.data.generation?.key,
 				scale: parsed.data.generation?.scale?.toLowerCase(),
 				tempo: parsed.data.generation?.tempo ?? project.bpm ?? undefined,
-				projectId: request.params.projectId,
+				projectId,
 				lengthBars: parsed.data.generation?.lengthBars ?? 8,
 				complexity: parsed.data.generation?.complexity ?? "medium",
 				variationAmount: parsed.data.generation?.variationAmount ?? 0.5,
@@ -99,11 +109,11 @@ export async function createMessage(request: AuthRequest, response: Response) {
 			return response.status(201).json({ data: { mode: "generation", generation } });
 		}
 
-		const { error: userMessageError } = await db.from("project_messages").insert({ project_id: request.params.projectId, user_id: request.user!.id, role: "user", content: parsed.data.content });
+		const { error: userMessageError } = await db.from("project_messages").insert({ project_id: projectId, user_id: request.user!.id, role: "user", content: parsed.data.content });
 		if (userMessageError) throw userMessageError;
 
 		const reply = await musicBrainService.reply({
-			projectId: request.params.projectId,
+			projectId,
 			userId: request.user!.id,
 			prompt: parsed.data.content,
 			analysis,
@@ -111,11 +121,11 @@ export async function createMessage(request: AuthRequest, response: Response) {
 			projectMood: project.mood ?? null,
 		});
 
-		const { data: assistantMessage, error: assistantMessageError } = await db.from("project_messages").insert({ project_id: request.params.projectId, user_id: request.user!.id, role: "assistant", content: reply.content }).select("id, role, content, generation_id, created_at").single();
+		const { data: assistantMessage, error: assistantMessageError } = await db.from("project_messages").insert({ project_id: projectId, user_id: request.user!.id, role: "assistant", content: reply.content }).select("id, role, content, generation_id, created_at").single();
 		if (assistantMessageError) throw assistantMessageError;
 
 		await musicBrainService.updateConversationContext({
-			projectId: request.params.projectId,
+			projectId,
 			userId: request.user!.id,
 			question: parsed.data.content,
 			assistantReply: reply.content,
