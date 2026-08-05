@@ -17,6 +17,7 @@ import { pitchRouter } from "./routes/pitch.routes.js";
 import { musicRouter } from "./routes/music.routes.js";
 import { aiRouter } from "./routes/ai.routes.js";
 import { songPackRouter } from "./routes/songPack.routes.js";
+import { referralRouter } from "./routes/referral.routes.js";
 import { musicBrainService } from "./services/musicBrainService.js";
 
 export const app = express();
@@ -40,6 +41,7 @@ app.use("/api/v1/pitch", pitchRouter);
 app.use("/api/v1/music", musicRouter);
 app.use("/api/v1/ai", aiRouter);
 app.use("/api/v1/song-packs", songPackRouter);
+app.use("/api/v1", referralRouter);
 app.use("/api/v1", billingRouter);
 app.use("/api/v1/admin", adminRouter);
 app.use((error: Error, _request: express.Request, response: express.Response, _next: express.NextFunction) => { console.error(error); response.status(500).json({ error: "Unexpected server error" }); });
