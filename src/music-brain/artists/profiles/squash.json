@@ -1,0 +1,19 @@
+{
+  "slug": "squash",
+  "name": "Squash",
+  "aliases": ["squash", "squash type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 96, "max": 106, "default": 101 },
+  "key_preferences": ["F Minor", "G Minor", "C Minor"],
+  "scale_preferences": ["Natural Minor", "Phrygian"],
+  "instrument_preferences": ["Dark Piano", "Brass Accent", "808"],
+  "melody_density": "Medium",
+  "rhythm_style": "Stomping syncopation",
+  "energy": "High",
+  "mood": ["Aggressive", "Dark", "Confident"],
+  "arrangement_tendencies": ["Immediate energy", "Chant-friendly repetition", "Sparse breakdowns"],
+  "production_traits": ["Heavy low-end", "Hard accents", "Short motivic loops"],
+  "plugin_categories": ["Dark key instruments", "Brass stab categories", "Aggressive 808 instruments"],
+  "active": true
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "burna-boy",
+  "name": "Burna Boy",
+  "aliases": ["burna boy", "burna", "burna boy type"],
+  "region": "Nigeria",
+  "primary_genres": ["Afrobeats", "Dancehall"],
+  "tempo_range": { "min": 98, "max": 112, "default": 106 },
+  "key_preferences": ["G Major", "E Minor", "A Minor"],
+  "scale_preferences": ["Major", "Pentatonic Major", "Natural Minor"],
+  "instrument_preferences": ["Afro Guitar", "Warm Keys", "Percussion"],
+  "melody_density": "Medium",
+  "rhythm_style": "Groove-led afro pocket",
+  "energy": "Medium High",
+  "mood": ["Warm", "Hopeful", "Relaxed"],
+  "arrangement_tendencies": ["Percussion-first movement", "Conversational phrases", "Organic transitions"],
+  "production_traits": ["Warm guitars", "Live-feel percussion", "Accessible harmony"],
+  "plugin_categories": ["Afro guitar libraries", "Warm key instruments", "Organic percussion categories"],
+  "active": true
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "skippa",
+  "name": "Skippa",
+  "aliases": ["skippa", "skippa type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 105, "default": 101 },
+  "key_preferences": ["F Minor", "G Minor", "A Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Bouncy Piano", "Bell Layer", "808"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Aggressive bounce",
+  "energy": "High",
+  "mood": ["Dark", "Aggressive", "Confident"],
+  "arrangement_tendencies": ["Simple Memorable Hooks", "Fast Phrase Turnarounds", "Hook-First Structure"],
+  "production_traits": ["Bouncy piano motifs", "Punchy low end", "Trap hi-hat support"],
+  "plugin_categories": ["Bright piano instruments", "Trap piano categories", "Bell layer instruments"],
+  "active": true
+}

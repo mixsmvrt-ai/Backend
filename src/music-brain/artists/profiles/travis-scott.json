@@ -1,0 +1,19 @@
+{
+  "slug": "travis-scott",
+  "name": "Travis Scott",
+  "aliases": ["travis scott", "travis", "la flame", "travis scott type"],
+  "region": "United States",
+  "primary_genres": ["Trap", "Cinematic"],
+  "tempo_range": { "min": 128, "max": 150, "default": 138 },
+  "key_preferences": ["F Minor", "D Minor", "G Minor"],
+  "scale_preferences": ["Natural Minor", "Harmonic Minor"],
+  "instrument_preferences": ["Ambient Pad", "Lead Synth", "Bell Layer"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Hypnotic swaying bounce",
+  "energy": "Medium High",
+  "mood": ["Dark", "Dreamy", "Epic"],
+  "arrangement_tendencies": ["Large transitions", "Atmospheric intros", "Wide chorus lift"],
+  "production_traits": ["Psychedelic ambience", "Wide reverbs", "Suspended harmony"],
+  "plugin_categories": ["Atmospheric synth pads", "Lead synth categories", "Cinematic texture instruments"],
+  "active": true
+}

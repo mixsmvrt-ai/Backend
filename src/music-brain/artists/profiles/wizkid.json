@@ -1,0 +1,19 @@
+{
+  "slug": "wizkid",
+  "name": "Wizkid",
+  "aliases": ["wizkid", "wiz", "wizkid type"],
+  "region": "Nigeria",
+  "primary_genres": ["Afrobeats", "Pop"],
+  "tempo_range": { "min": 98, "max": 112, "default": 104 },
+  "key_preferences": ["G Major", "A Major", "E Minor"],
+  "scale_preferences": ["Major", "Pentatonic Major"],
+  "instrument_preferences": ["Afro Guitar", "Soft Keys", "Percussion"],
+  "melody_density": "Medium",
+  "rhythm_style": "Smooth rolling groove",
+  "energy": "Medium",
+  "mood": ["Relaxed", "Warm", "Dreamy"],
+  "arrangement_tendencies": ["Light intros", "Groove continuity", "Melodic restraint"],
+  "production_traits": ["Soft guitar loops", "Airy percussion", "Open harmonic space"],
+  "plugin_categories": ["Afro guitar categories", "Soft key instruments", "Light percussion libraries"],
+  "active": true
+}

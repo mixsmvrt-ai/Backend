@@ -1,0 +1,19 @@
+{
+  "slug": "jamal",
+  "name": "Jamal",
+  "aliases": ["jamal", "jamal type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 104, "default": 99 },
+  "key_preferences": ["A Minor", "F Minor", "E Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Guitar", "Dark Keys", "Bell Layer"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Loose syncopation",
+  "energy": "Medium High",
+  "mood": ["Dark", "Street", "Focused"],
+  "arrangement_tendencies": ["Short intros", "Pocket-first phrasing", "Open hooks"],
+  "production_traits": ["Minimal harmony", "Guitar punctuations", "Dry rhythmic space"],
+  "plugin_categories": ["Clean guitar libraries", "Dark key instruments", "Ambient bell textures"],
+  "active": true
+}

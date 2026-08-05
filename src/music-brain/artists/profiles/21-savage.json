@@ -1,0 +1,19 @@
+{
+  "slug": "21-savage",
+  "name": "21 Savage",
+  "aliases": ["21 savage", "savage", "21", "21 savage type"],
+  "region": "United States",
+  "primary_genres": ["Trap", "Drill"],
+  "tempo_range": { "min": 130, "max": 145, "default": 138 },
+  "key_preferences": ["F Minor", "C Minor", "G Minor"],
+  "scale_preferences": ["Natural Minor", "Phrygian"],
+  "instrument_preferences": ["Dark Piano", "Bell Layer", "808"],
+  "melody_density": "Low",
+  "rhythm_style": "Menacing half-time bounce",
+  "energy": "Medium High",
+  "mood": ["Dark", "Menacing", "Cold"],
+  "arrangement_tendencies": ["Short motifs", "Stark space", "Low-note emphasis"],
+  "production_traits": ["Cold melodic loops", "Sub-led tension", "Minimal harmony"],
+  "plugin_categories": ["Dark piano categories", "Bell textures", "Trap 808 instruments"],
+  "active": true
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "skillibeng",
+  "name": "Skillibeng",
+  "aliases": ["skillibeng", "skilli", "skillibeng type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 105, "default": 100 },
+  "key_preferences": ["F Minor", "G Minor", "C Minor"],
+  "scale_preferences": ["Natural Minor", "Phrygian"],
+  "instrument_preferences": ["Dark Keys", "Bell Layer", "Pluck"],
+  "melody_density": "Low",
+  "rhythm_style": "Detached syncopation",
+  "energy": "Medium High",
+  "mood": ["Dark", "Mysterious", "Street"],
+  "arrangement_tendencies": ["Minimal intros", "Detached hook motifs", "Wide vocal space"],
+  "production_traits": ["Cold melodic fragments", "Sparse harmony", "Dark ambience"],
+  "plugin_categories": ["Dark pluck libraries", "Bell textures", "Moody key instruments"],
+  "active": true
+}

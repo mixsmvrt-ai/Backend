@@ -1,0 +1,19 @@
+{
+  "slug": "chronic-law",
+  "name": "Chronic Law",
+  "aliases": ["chronic law", "chronic", "law", "chronic law type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 102, "default": 98 },
+  "key_preferences": ["A Minor", "F Minor", "D Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Emotional Piano", "Soft Felt Piano", "Ambient Pad"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Measured",
+  "energy": "Medium",
+  "mood": ["Melancholic", "Emotional", "Dark"],
+  "arrangement_tendencies": ["Minimal Harmonic Movement", "Long Sustains", "Open Vocal Space"],
+  "production_traits": ["Soft felt-style textures", "Minor-key piano focus", "Long note values"],
+  "plugin_categories": ["Felt piano libraries", "Soft grand piano instruments", "Dark cinematic piano categories"],
+  "active": true
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "drake",
+  "name": "Drake",
+  "aliases": ["drake", "drizzy", "drake type"],
+  "region": "Canada",
+  "primary_genres": ["R&B", "Hip Hop", "Pop"],
+  "tempo_range": { "min": 90, "max": 105, "default": 98 },
+  "key_preferences": ["A Minor", "D Minor", "F Minor"],
+  "scale_preferences": ["Natural Minor", "Dorian"],
+  "instrument_preferences": ["Emotional Piano", "Ambient Pad", "Soft Electric Piano"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Smooth spacious phrasing",
+  "energy": "Medium",
+  "mood": ["Emotional", "Melancholic", "Smooth"],
+  "arrangement_tendencies": ["Spacious arrangements", "Long reverb tails", "Room for vocal phrasing"],
+  "production_traits": ["Ambient pads", "Minor keys", "Smooth melodic phrasing"],
+  "plugin_categories": ["Ambient keys", "Dream pad categories", "Soft electric piano instruments"],
+  "active": true
+}

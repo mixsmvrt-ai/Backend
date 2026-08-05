@@ -1,0 +1,19 @@
+{
+  "slug": "future",
+  "name": "Future",
+  "aliases": ["future", "pluto", "future type"],
+  "region": "United States",
+  "primary_genres": ["Trap", "Hip Hop"],
+  "tempo_range": { "min": 130, "max": 150, "default": 144 },
+  "key_preferences": ["F Minor", "G Minor", "C Minor"],
+  "scale_preferences": ["Natural Minor", "Phrygian"],
+  "instrument_preferences": ["Dark Bell", "Pad", "808"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Half-time trap bounce",
+  "energy": "Medium High",
+  "mood": ["Dark", "Emotional", "Aggressive"],
+  "arrangement_tendencies": ["Moody loop focus", "Wide transitions", "Low harmonic clutter"],
+  "production_traits": ["Dark bells", "Heavy sub", "Repetitive motifs"],
+  "plugin_categories": ["Dark bell libraries", "Atmospheric pad instruments", "Heavy 808 categories"],
+  "active": true
+}

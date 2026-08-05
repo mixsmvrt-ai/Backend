@@ -1,0 +1,19 @@
+{
+  "slug": "lil-baby",
+  "name": "Lil Baby",
+  "aliases": ["lil baby", "baby", "lil baby type"],
+  "region": "United States",
+  "primary_genres": ["Trap", "Hip Hop"],
+  "tempo_range": { "min": 135, "max": 150, "default": 142 },
+  "key_preferences": ["F Minor", "G Minor", "A Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Bouncy Piano", "Bell Layer", "808"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Strong rhythmic bounce",
+  "energy": "High",
+  "mood": ["Confident", "Energetic", "Focused"],
+  "arrangement_tendencies": ["Repetitive motifs", "Short loops", "Pocket-first spacing"],
+  "production_traits": ["Bouncy piano", "Sparse harmony", "Firm low-end support"],
+  "plugin_categories": ["Bright piano libraries", "Trap piano instruments", "Bell layer categories"],
+  "active": true
+}

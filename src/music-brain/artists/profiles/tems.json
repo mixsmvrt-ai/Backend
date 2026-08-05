@@ -1,0 +1,19 @@
+{
+  "slug": "tems",
+  "name": "Tems",
+  "aliases": ["tems", "tems type"],
+  "region": "Nigeria",
+  "primary_genres": ["R&B", "Afrobeats"],
+  "tempo_range": { "min": 90, "max": 108, "default": 98 },
+  "key_preferences": ["A Minor", "D Minor", "E Minor"],
+  "scale_preferences": ["Natural Minor", "Dorian"],
+  "instrument_preferences": ["Ambient Pad", "Soft Electric Piano", "Warm Bass"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Floating soulful pocket",
+  "energy": "Medium",
+  "mood": ["Dreamy", "Emotional", "Warm"],
+  "arrangement_tendencies": ["Ambient intros", "Slow phrase release", "Supportive harmony"],
+  "production_traits": ["Soft pads", "Warm low-end", "Airy textures"],
+  "plugin_categories": ["Dream pad instruments", "Soft electric piano categories", "Warm bass libraries"],
+  "active": true
+}

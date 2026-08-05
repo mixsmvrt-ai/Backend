@@ -1,0 +1,19 @@
+{
+  "slug": "masicka",
+  "name": "Masicka",
+  "aliases": ["masicka", "masicka type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 104, "default": 100 },
+  "key_preferences": ["F Minor", "E Minor", "G Minor"],
+  "scale_preferences": ["Natural Minor", "Harmonic Minor"],
+  "instrument_preferences": ["Dark Piano", "Choir Pad", "808"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Tight syncopated drive",
+  "energy": "High",
+  "mood": ["Dark", "Aggressive", "Focused"],
+  "arrangement_tendencies": ["Dark intros", "Hook reinforcement", "Sparse breakdowns"],
+  "production_traits": ["Tense minor harmony", "Heavy low-end", "Cinematic support textures"],
+  "plugin_categories": ["Dark piano libraries", "Choir or pad instruments", "Heavy 808 categories"],
+  "active": true
+}

@@ -1,0 +1,19 @@
+{
+  "slug": "teebone",
+  "name": "Teebone",
+  "aliases": ["teebone", "tee bone", "teebone type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 94, "max": 102, "default": 98 },
+  "key_preferences": ["A Minor", "C Minor", "F Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Dark Piano", "Pad", "808"],
+  "melody_density": "Low",
+  "rhythm_style": "Laid-back syncopation",
+  "energy": "Medium",
+  "mood": ["Dark", "Melancholic", "Street"],
+  "arrangement_tendencies": ["Open verse space", "Slow phrase release", "Minimal transitions"],
+  "production_traits": ["Subtle textures", "Sparse piano lines", "Soft atmospheric beds"],
+  "plugin_categories": ["Felt or dark piano libraries", "Ambient pad categories", "Sub bass instruments"],
+  "active": true
+}

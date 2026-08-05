@@ -1,0 +1,19 @@
+{
+  "slug": "central-cee",
+  "name": "Central Cee",
+  "aliases": ["central cee", "cee", "central cee type"],
+  "region": "United Kingdom",
+  "primary_genres": ["Drill", "Hip Hop"],
+  "tempo_range": { "min": 138, "max": 145, "default": 142 },
+  "key_preferences": ["F Minor", "G Minor", "C Minor"],
+  "scale_preferences": ["Natural Minor", "Phrygian"],
+  "instrument_preferences": ["Piano", "Guitar Pluck", "808"],
+  "melody_density": "Low",
+  "rhythm_style": "Tight UK drill pocket",
+  "energy": "High",
+  "mood": ["Focused", "Cold", "Confident"],
+  "arrangement_tendencies": ["Short motifs", "Call-and-response gaps", "Low clutter arrangement"],
+  "production_traits": ["Cold pianos", "Drill bounce", "Simple melodic cells"],
+  "plugin_categories": ["Drill piano libraries", "Pluck instruments", "Sliding 808 categories"],
+  "active": true
+}

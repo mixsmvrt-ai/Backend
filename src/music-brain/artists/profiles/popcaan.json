@@ -1,0 +1,19 @@
+{
+  "slug": "popcaan",
+  "name": "Popcaan",
+  "aliases": ["popcaan", "unruly", "popcaan type"],
+  "region": "Jamaica",
+  "primary_genres": ["Dancehall", "Afrobeats"],
+  "tempo_range": { "min": 92, "max": 108, "default": 100 },
+  "key_preferences": ["G Major", "E Minor", "A Minor"],
+  "scale_preferences": ["Major", "Natural Minor", "Pentatonic Major"],
+  "instrument_preferences": ["Afro Guitar", "Bell Layer", "Warm Keys"],
+  "melody_density": "Medium",
+  "rhythm_style": "Rolling crossover bounce",
+  "energy": "Medium High",
+  "mood": ["Dreamy", "Confident", "Warm"],
+  "arrangement_tendencies": ["Airy intros", "Melodic hook focus", "Groove-led repetition"],
+  "production_traits": ["Warm guitars", "Open percussion", "Airy top-line support"],
+  "plugin_categories": ["Afro guitar libraries", "Warm pluck categories", "Melodic key instruments"],
+  "active": true
+}

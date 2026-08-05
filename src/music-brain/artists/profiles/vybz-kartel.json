@@ -1,0 +1,19 @@
+{
+  "slug": "vybz-kartel",
+  "name": "Vybz Kartel",
+  "aliases": ["vybz kartel", "kartel", "vybz", "kartel type"],
+  "region": "Jamaica",
+  "primary_genres": ["Dancehall", "Modern Trap Dancehall"],
+  "tempo_range": { "min": 96, "max": 112, "default": 104 },
+  "key_preferences": ["G Major", "A Minor", "C Major"],
+  "scale_preferences": ["Major", "Mixolydian", "Natural Minor"],
+  "instrument_preferences": ["Keys", "Bell Accent", "Bass"],
+  "melody_density": "Medium",
+  "rhythm_style": "Clipped dembow syncopation",
+  "energy": "High",
+  "mood": ["Confident", "Energetic", "Aggressive"],
+  "arrangement_tendencies": ["Hook-first sections", "Direct phrasing", "Club-ready drops"],
+  "production_traits": ["Dry percussion", "Bold bass", "Bright punctuation"],
+  "plugin_categories": ["Dancehall key instruments", "Bell accent categories", "Punchy bass instruments"],
+  "active": true
+}

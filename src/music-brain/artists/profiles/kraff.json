@@ -1,0 +1,19 @@
+{
+  "slug": "kraff",
+  "name": "Kraff",
+  "aliases": ["kraff", "kraf", "kraff type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 105, "default": 100 },
+  "key_preferences": ["F Minor", "G Minor", "A Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Clean Electric Guitar", "Dark Piano", "Bell Layer"],
+  "melody_density": "Sparse",
+  "rhythm_style": "Syncopated",
+  "energy": "High",
+  "mood": ["Dark", "Aggressive", "Street"],
+  "arrangement_tendencies": ["Minimal Intro", "Strong Hook Repetition", "Space for Vocals"],
+  "production_traits": ["Wide 808s", "Minimal Chords", "Rhythmic Guitar Motifs"],
+  "plugin_categories": ["Clean electric guitar libraries", "Ambient guitar textures", "Cinematic guitar instruments"],
+  "active": true
+}

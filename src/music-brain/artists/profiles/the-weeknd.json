@@ -1,0 +1,19 @@
+{
+  "slug": "the-weeknd",
+  "name": "The Weeknd",
+  "aliases": ["the weeknd", "weeknd", "abel", "the weeknd type"],
+  "region": "Canada",
+  "primary_genres": ["R&B", "Pop", "Synthwave"],
+  "tempo_range": { "min": 92, "max": 118, "default": 102 },
+  "key_preferences": ["C Minor", "F Minor", "D Minor"],
+  "scale_preferences": ["Natural Minor", "Harmonic Minor"],
+  "instrument_preferences": ["Synth Pad", "Soft Keys", "Bass"],
+  "melody_density": "Medium",
+  "rhythm_style": "Smooth nocturnal pulse",
+  "energy": "Medium",
+  "mood": ["Dark", "Dreamy", "Romantic"],
+  "arrangement_tendencies": ["Atmospheric intros", "Hook-centric lift", "Retro texture layering"],
+  "production_traits": ["Nocturnal synth textures", "Polished low-end", "Lush minor harmony"],
+  "plugin_categories": ["Retro synth pads", "Soft key instruments", "Cinematic bass categories"],
+  "active": true
+}

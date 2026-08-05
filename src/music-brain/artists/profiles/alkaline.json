@@ -1,0 +1,19 @@
+{
+  "slug": "alkaline",
+  "name": "Alkaline",
+  "aliases": ["alkaline", "alkaline type"],
+  "region": "Jamaica",
+  "primary_genres": ["Dancehall", "Modern Trap Dancehall"],
+  "tempo_range": { "min": 95, "max": 108, "default": 101 },
+  "key_preferences": ["A Minor", "C Minor", "E Minor"],
+  "scale_preferences": ["Natural Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Piano", "Bell Accent", "Bass"],
+  "melody_density": "Medium",
+  "rhythm_style": "Hook-driven bounce",
+  "energy": "High",
+  "mood": ["Confident", "Dark", "Energetic"],
+  "arrangement_tendencies": ["Direct hooks", "Repetitive chant support", "Minimal intros"],
+  "production_traits": ["Bright accents over dark bass", "Dry drums", "Simple loop focus"],
+  "plugin_categories": ["Dancehall piano categories", "Bell accent instruments", "Punchy bass instruments"],
+  "active": true
+}
