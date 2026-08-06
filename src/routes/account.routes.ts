@@ -47,11 +47,18 @@ accountRouter.get("/profile", async (request: AuthRequest, response, next) => {
 
     const { data, error } = await db
       .from("profiles")
-      .select("*, user_preferences(*)")
+      .select("*")
       .eq("id", request.user!.id)
       .single();
     if (error) throw error;
-    response.json({ data });
+
+    const { data: preferences, error: preferencesError } = await db
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", request.user!.id)
+      .maybeSingle();
+    if (preferencesError) throw preferencesError;
+    response.json({ data: { ...data, user_preferences: preferences } });
   } catch (error) {
     next(error);
   }
