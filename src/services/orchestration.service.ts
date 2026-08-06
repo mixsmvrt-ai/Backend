@@ -48,9 +48,23 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   const { data: generation, error: generationError } = await db.from("generations").insert({ user_id: userId, request_id: request.id, project_id: input.projectId ?? null, status: "processing" }).select().single();
   if (generationError) throw generationError;
   try {
-    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
-    const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, env.AI_PROVIDER_MODEL ?? selection.primaryModel);
-    const music = await provider.compose(buildMusicPrompt(contextualInput, referencePrompt), controller.signal).finally(() => clearTimeout(timer));
+    const models = [selection.primaryModel, selection.fallbackModel].filter((model, index, values): model is string => Boolean(model) && values.indexOf(model) === index);
+    let music;
+    let lastError: unknown;
+    for (const model of models) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
+      try {
+        const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
+        music = await provider.compose(buildMusicPrompt(contextualInput, referencePrompt), controller.signal);
+        break;
+      } catch (error) {
+        lastError = error;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    if (!music) throw lastError instanceof Error ? lastError : new Error("AI generation failed.");
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: input.genre ?? null, mood: input.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;
     const file = writeMidi(music); const fileName = midiFileNameFromTrackName(music.trackName); const storagePath = `${userId}/${generation.id}/${fileName}`;
     const { error: storageError } = await db.storage.from("midi-exports").upload(storagePath, file, { contentType: "audio/midi", upsert: false }); if (storageError) throw storageError;
