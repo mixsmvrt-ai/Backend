@@ -3,12 +3,18 @@ import type { AuthRequest } from "../middleware/auth.js";
 import { requireAdmin } from "../middleware/auth.js";
 import { aiGenerateInputSchema, aiRetryInputSchema, aiOrchestrator, AiOrchestrationError } from "../services/ai/index.js";
 
+const discreetServerError = "Server error. Please try again in a few minutes.";
+
 function handleError(response: Response, error: unknown, fallback: string) {
   if (error instanceof AiOrchestrationError) {
+    if (error.statusCode >= 500) {
+      response.status(error.statusCode).json({ error: discreetServerError });
+      return;
+    }
     response.status(error.statusCode).json({ error: error.message, code: error.code });
     return;
   }
-  response.status(500).json({ error: error instanceof Error ? error.message : fallback });
+  response.status(500).json({ error: discreetServerError });
 }
 
 export async function generate(request: AuthRequest, response: Response) {

@@ -29,7 +29,7 @@ type ProjectConversationRow = {
 	bpm: number | null;
 	musical_key: string | null;
 };
-function failure(response: Response, error: unknown) { return response.status(500).json({ error: error instanceof Error ? error.message : "Unable to complete request" }); }
+function failure(response: Response, _error: unknown) { return response.status(500).json({ error: "Server error. Please try again in a few minutes." }); }
 
 function looksLikeMusicQuestion(prompt: string) {
 	return /(\?|\bwhat\b|\bwhich\b|\bwhy\b|\bhow\b|\bshould\b|\bplugin\b|\bpreset\b|\bsound\b|\blayer\b|\barrangement\b|\beq\b|\breverb\b|\b808\b|\bbass\b|\bscale\b|\bkey\b|\bchord\b|\bcounter\b)/i.test(prompt);
