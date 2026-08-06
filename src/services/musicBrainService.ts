@@ -3,6 +3,7 @@ import { requireSupabase } from "../config/supabase.js";
 import { genreRecommendationService } from "./genreRecommendationService.js";
 import type { MidiAnalysisSummary } from "./midiAnalysisService.js";
 import { pluginRecommendationService } from "./pluginRecommendationService.js";
+import { musicBrainArtistCatalog } from "./musicBrain/artists.js";
 
 interface ConversationContext {
   projectId: string;
@@ -12,6 +13,12 @@ interface ConversationContext {
   projectGenre: string | null;
   projectMood: string | null;
 }
+
+type ProjectMusicContextRow = {
+  previous_questions: string[] | null;
+  previous_edits: string[] | null;
+  plugins_recommended: string[] | null;
+};
 
 function includesAny(text: string, terms: string[]) {
   return terms.some((term) => text.includes(term));
@@ -25,6 +32,18 @@ function responseDelay(content: string) {
   return 6000;
 }
 
+function unique(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function titleCase(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0] ? `${part[0].toUpperCase()}${part.slice(1)}` : part)
+    .join(" ");
+}
+
 export class MusicBrainService {
   async preload() {
     await loadMusicBrainKnowledge();
@@ -34,23 +53,36 @@ export class MusicBrainService {
     const knowledge = await loadMusicBrainKnowledge();
     const genreAdvice = await genreRecommendationService.resolve(input.projectGenre);
     const lowerPrompt = input.prompt.toLowerCase();
-    const pluginRecommendations = await pluginRecommendationService.recommend({ analysis: input.analysis, genre: genreAdvice.genre, question: input.prompt });
+    const { data } = await requireSupabase().from("project_music_contexts").select("previous_questions, previous_edits, plugins_recommended").eq("project_id", input.projectId).eq("user_id", input.userId).maybeSingle();
+    const contextRow = (data ?? null) as ProjectMusicContextRow | null;
+    const questionHistory = [...(contextRow?.previous_questions ?? []), input.prompt].slice(-8);
+    const artistBlend = await musicBrainArtistCatalog.resolvePrompt(questionHistory.join(" "));
+    const pluginRecommendations = await pluginRecommendationService.recommend({
+      analysis: input.analysis,
+      genre: genreAdvice.genre,
+      question: input.prompt,
+      preferredCategories: artistBlend?.pluginCategories,
+    });
+    const instrumentCategories = unique(artistBlend?.instrumentPreferences ?? []);
+    const pluginCategories = unique([...(artistBlend?.pluginCategories ?? []), ...pluginRecommendations.map((recommendation) => titleCase(recommendation.category))]).slice(0, 5);
 
     let content = "";
 
     if (includesAny(lowerPrompt, ["plugin", "preset", "sound", "instrument", "bell", "piano", "pad"])) {
-      const top = pluginRecommendations[0];
-      const alternatives = pluginRecommendations.slice(1, 5).map((recommendation) => `${recommendation.rank}. ${recommendation.plugin} - ${recommendation.category}`).join("\n");
+      const topCategory = pluginCategories[0] ?? pluginRecommendations[0]?.category ?? "soft key instruments";
+      const alternatives = pluginCategories.slice(1, 5).map((category, index) => `${index + 2}. ${category}`).join("\n");
+      const artistLead = artistBlend?.requestedArtists.length ? `${artistBlend.requestedArtists.join(" x ")} usually translates to ${instrumentCategories.slice(0, 3).join(", ")} and ${pluginCategories.slice(0, 3).join(", ")}.` : "";
       content = [
-        `This MIDI sits in the ${input.analysis.registerFocus} register with a ${input.analysis.emotionalProfile} feel, ${input.analysis.melodyContour} contour, and ${input.analysis.noteDensity.toFixed(2)} notes per beat, so I would not go for an overly bright pop patch.`,
-        `My first choice is ${top?.plugin ?? "Keyscape"} in a ${top?.category ?? "soft grand"} category because that keeps the emotion intact and gives the rhythm enough definition without crowding the pocket.`,
-        `Strong options:\n${alternatives || "1. Keyscape - soft grand\n2. Omnisphere - dark keys\n3. Nexus - dark piano\n4. Kontakt - felt piano"}`,
-        `Workflow: start with the main keys dry, then test a quiet ${pluginRecommendations[1]?.category ?? "dark bell"} layer one octave above only on phrase endings so the melody gets width without becoming busy.`,
+        `This MIDI sits in the ${input.analysis.registerFocus} register with a ${input.analysis.emotionalProfile} feel, ${input.analysis.melodyContour} contour, and ${input.analysis.noteDensity.toFixed(2)} notes per beat, so the sound choice should stay focused instead of overly bright or busy.`,
+        artistLead || `The safest lane here is ${topCategory} because it preserves the mood and leaves room for the rhythm pocket.`,
+        `Recommended instrument categories: ${instrumentCategories.length ? instrumentCategories.join(", ") : "Piano, pad, bell layer, or guitar depending on the lead role"}.`,
+        `Recommended plugin categories:\n1. ${topCategory}${alternatives ? `\n${alternatives}` : ""}`,
+        `Workflow: keep the main instrument dry first, then add one support layer from a contrasting category only on phrase endings so the melody gets width without becoming crowded.`,
       ].join("\n\n");
     } else if (includesAny(lowerPrompt, ["layer", "counter", "pad", "texture"])) {
       content = [
         `The lead already has a ${input.analysis.complexity} amount of movement, so the supporting layer should fill space rather than compete with the rhythm.`,
-        `I would add a low-volume cinematic pad or dark bell texture depending on whether you want width or more attack. Because the contour is ${input.analysis.melodyContour}, a sustained layer underneath the longest notes will sound more polished than doubling every hit.`,
+        `I would add ${artistBlend?.pluginCategories[0] ? `a low-volume ${artistBlend.pluginCategories[0].toLowerCase()}` : "a low-volume cinematic pad or dark bell texture"} depending on whether you want width or more attack. Because the contour is ${input.analysis.melodyContour}, a sustained layer underneath the longest notes will sound more polished than doubling every hit.`,
         `Alternative: use a short pluck counter melody in a higher octave only during the last bar of each phrase.`,
         `Workflow: duplicate the motif, remove 60 to 70 percent of the notes, move it up an octave, and only keep the notes that answer the lead instead of shadowing it.`,
       ].join("\n\n");
@@ -87,6 +119,7 @@ export class MusicBrainService {
     } else {
       content = [
         `The MIDI is ${input.analysis.key} ${input.analysis.scale} at ${input.analysis.tempo} BPM with a ${input.analysis.emotionalProfile} profile, ${input.analysis.melodyContour} shape, and ${input.analysis.complexity} complexity.`,
+        artistBlend?.requestedArtists.length ? `Artist vibe translation in play: ${artistBlend.summary}` : "",
         `Because the line lives in the ${input.analysis.registerFocus} register and repeats at a ${input.analysis.repetitionLevel.toFixed(2)} level, it wants a focused sound choice and a clean arrangement around it.`,
         `Practical move: keep the lead intimate, add only one support layer, and let the low end answer the melody instead of mirroring it.`,
         `Alternative: if you want it to hit harder, raise the BPM slightly toward ${genreAdvice.bpmRange ? genreAdvice.bpmRange[1] : input.analysis.tempo + 5} and shorten the note tails before changing instruments.`,

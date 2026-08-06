@@ -3,7 +3,20 @@ import { requireSupabase } from "../config/supabase.js";
 import { isConfiguredAdminUser } from "../services/admin-access.service.js";
 
 export interface AuthRequest extends Request { user?: { id: string; role: "user" | "admin" | "support" | "super_admin" } }
-export function requireAuth(request: AuthRequest, response: Response, next: NextFunction) {
+export async function requireAuth(request: AuthRequest, response: Response, next: NextFunction) {
+  const authorization = request.header("authorization");
+  const accessToken = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  if (accessToken) {
+    try {
+      const { data, error } = await requireSupabase().auth.getUser(accessToken);
+      if (error || !data.user) return response.status(401).json({ error: "Authentication required" });
+      request.user = { id: data.user.id, role: "user" };
+      return next();
+    } catch {
+      return response.status(401).json({ error: "Authentication required" });
+    }
+  }
+
   const userId = request.header("x-user-id");
   if (!userId) return response.status(401).json({ error: "Authentication required" });
   request.user = { id: userId, role: request.header("x-user-role") === "admin" ? "admin" : "user" };
