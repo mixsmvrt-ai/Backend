@@ -17,7 +17,25 @@ function table(name: string): Resource { if (!(name in tables)) throw new Error(
 const param = (value: string | string[]) => Array.isArray(value) ? value[0] : value;
 
 adminRouter.get("/overview", async (_request, response, next) => { try { const db = requireSupabase(); const [users, trial, pro, expired, payments, generations, storage, tickets] = await Promise.all([db.from("profiles").select("id", { count: "exact", head: true }), db.from("profiles").select("id", { count: "exact", head: true }).eq("membership_status", "trial_active"), db.from("profiles").select("id", { count: "exact", head: true }).eq("membership_status", "pro_active"), db.from("profiles").select("id", { count: "exact", head: true }).eq("membership_status", "expired"), db.from("payments").select("amount_cents").eq("status", "completed"), db.from("generations").select("id", { count: "exact", head: true }), db.from("storage_files").select("size_bytes"), db.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "pending"])]); [users, trial, pro, expired, payments, generations, storage, tickets].forEach(({ error }) => { if (error) throw error; }); response.json({ data: { totalUsers: users.count ?? 0, trialUsers: trial.count ?? 0, proUsers: pro.count ?? 0, expiredUsers: expired.count ?? 0, revenueCents: (payments.data ?? []).reduce((sum, payment) => sum + payment.amount_cents, 0), totalGenerations: generations.count ?? 0, storageBytes: (storage.data ?? []).reduce((sum, file) => sum + Number(file.size_bytes), 0), openTickets: tickets.count ?? 0 } }); } catch (error) { next(error); } });
-adminRouter.get("/users", async (request, response, next) => { try { const q = String(request.query.query ?? ""); let query = requireSupabase().from("profiles").select("*, user_roles(role)", { count: "exact" }).limit(100).order("created_at", { ascending: false }); if (q) query = query.ilike("display_name", `%${q}%`); const { data, count, error } = await query; if (error) throw error; response.json({ data, meta: { total: count ?? 0 } }); } catch (error) { next(error); } });
+adminRouter.get("/users", async (request, response, next) => {
+	try {
+		const db = requireSupabase();
+		const q = String(request.query.query ?? "");
+		let query = db.from("profiles").select("*", { count: "exact" }).limit(100).order("created_at", { ascending: false });
+		if (q) query = query.ilike("display_name", `%${q}%`);
+		const { data, count, error } = await query;
+		if (error) throw error;
+		const userIds = (data ?? []).map((user) => user.id);
+		const { data: roles, error: rolesError } = userIds.length
+			? await db.from("user_roles").select("user_id, role").in("user_id", userIds)
+			: { data: [], error: null };
+		if (rolesError) throw rolesError;
+		const rolesByUser = new Map((roles ?? []).map((entry) => [entry.user_id, [{ role: entry.role }]]));
+		response.json({ data: (data ?? []).map((user) => ({ ...user, user_roles: rolesByUser.get(user.id) ?? [] })), meta: { total: count ?? 0 } });
+	} catch (error) {
+		next(error);
+	}
+});
 adminRouter.patch("/users/:id", async (request: AuthRequest, response, next) => { try { const userId = param(request.params.id); const input = z.object({ displayName: z.string().min(1).max(80).optional(), membershipType: z.enum(["trial", "pro", "expired", "admin"]).optional(), membershipStatus: z.enum(["trial_active", "pro_active", "expired", "admin"]).optional(), accessExpiresAt: z.string().datetime().nullable().optional(), trialExpiresAt: z.string().datetime().nullable().optional(), role: z.enum(["user", "support", "admin", "super_admin"]).optional() }).parse(request.body); const db = requireSupabase(); const { error } = await db.from("profiles").update({ ...(input.displayName ? { display_name: input.displayName } : {}), ...(input.membershipType ? { membership_type: input.membershipType } : {}), ...(input.membershipStatus ? { membership_status: input.membershipStatus } : {}), ...(input.accessExpiresAt !== undefined ? { access_expires_at: input.accessExpiresAt } : {}), ...(input.trialExpiresAt !== undefined ? { trial_expires_at: input.trialExpiresAt } : {}) }).eq("id", userId); if (error) throw error; if (input.role) { const { error: roleError } = await db.from("user_roles").upsert({ user_id: userId, role: input.role }); if (roleError) throw roleError; } await auditAdmin(request.user!.id, "updated", "user", userId, input); response.status(204).end(); } catch (error) { next(error); } });
 adminRouter.get("/memberships/overview", billing.adminTrialOverview);
 adminRouter.get("/memberships/users", billing.adminTrialUsers);
