@@ -9,6 +9,7 @@ import { assertCreditsAvailable, recordCreditUsage, TEXT_TO_MIDI_CREDIT_COST, VO
 import { drumReferencePrompt } from "./drumReference.service.js";
 import { midiAnalysisService } from "./midiAnalysisService.js";
 import { modelSelector } from "./ai/modelSelector.js";
+import { assertPlusMembership } from "./membership.service.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -28,6 +29,7 @@ function midiFileNameFromTrackName(trackName: string) {
 export async function orchestrateGeneration(userId: string, input: OrchestrationInput) {
   if (!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY) throw new Error("AI generation is unavailable because the provider is not configured.");
   const workflow = input.workflow ?? "text_to_midi";
+  if (workflow === "voice_to_midi") await assertPlusMembership(userId);
   const creditCost = workflowCreditCost(workflow);
   await assertCreditsAvailable(userId, creditCost, workflow === "voice_to_midi" ? "shared" : "text_to_midi");
   const selection = await modelSelector.forUser(userId);

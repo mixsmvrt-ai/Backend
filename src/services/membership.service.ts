@@ -5,11 +5,13 @@ import { isConfiguredAdminUser } from "./admin-access.service.js";
 type AppRole = "user" | "support" | "admin" | "super_admin";
 type MembershipType = "trial" | "pro" | "expired" | "admin";
 type MembershipStatus = "trial_active" | "pro_active" | "expired" | "admin";
+export type MembershipPlan = "go" | "plus";
 
 type ProfileRow = {
 	id: string;
 	created_at: string | null;
 	membership_type: MembershipType | "free" | null;
+	plan: MembershipPlan | null;
 	membership_status: MembershipStatus | null;
 	trial_started_at: string | null;
 	trial_expires_at: string | null;
@@ -36,6 +38,7 @@ export interface MembershipSnapshot {
 	totalPayments: number;
 	daysRemaining: number;
 	trialDaysRemaining: number;
+	plan: MembershipPlan;
 }
 
 const DAY_MS = 86_400_000;
@@ -113,7 +116,7 @@ async function recordMembershipHistory(userId: string, input: { type: Membership
 
 async function ensureProfile(userId: string): Promise<ProfileRow> {
 	const db = requireSupabase();
-	const { data, error } = await db.from("profiles").select("id, created_at, membership_type, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, last_payment_date, total_payments").eq("id", userId).maybeSingle();
+	const { data, error } = await db.from("profiles").select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, last_payment_date, total_payments").eq("id", userId).maybeSingle();
 	if (error) throw error;
 
 	if (!data) {
@@ -124,11 +127,12 @@ async function ensureProfile(userId: string): Promise<ProfileRow> {
 			created_at: createdAt.toISOString(),
 			updated_at: createdAt.toISOString(),
 			membership_type: "trial",
+			plan: "plus",
 			membership_status: "trial_active",
 			trial_started_at: createdAt.toISOString(),
 			trial_expires_at: trialExpiresAt.toISOString(),
 			total_payments: 0,
-		}).select("id, created_at, membership_type, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
+		}).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
 		if (insertError || !inserted) throw insertError ?? new Error("Unable to initialize membership profile.");
 		await recordMembershipHistory(userId, { type: "trial", status: "trial_active", startsAt: createdAt, expiresAt: trialExpiresAt, reason: "bootstrap_trial" });
 		await recordTrialEvent(userId, "started", { trialStartedAt: createdAt.toISOString(), trialExpiresAt: trialExpiresAt.toISOString() });
@@ -162,7 +166,7 @@ async function ensureProfile(userId: string): Promise<ProfileRow> {
 
 	if (Object.keys(updates).length > 0) {
 		updates.updated_at = currentTime().toISOString();
-		const { data: updated, error: updateError } = await db.from("profiles").update(updates).eq("id", userId).select("id, created_at, membership_type, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
+		const { data: updated, error: updateError } = await db.from("profiles").update(updates).eq("id", userId).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
 		if (updateError || !updated) throw updateError ?? new Error("Unable to update membership profile.");
 		return updated as ProfileRow;
 	}
@@ -176,6 +180,7 @@ async function ensureProfile(userId: string): Promise<ProfileRow> {
 }
 
 function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
+	const plan = profile.plan ?? "plus";
 	if (role === "admin" || role === "super_admin" || profile.membership_type === "admin") {
 		return {
 			type: "admin",
@@ -193,6 +198,7 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			totalPayments: Number(profile.total_payments ?? 0),
 			daysRemaining: 0,
 			trialDaysRemaining: 0,
+			plan: "plus",
 		};
 	}
 
@@ -218,6 +224,7 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			totalPayments: Number(profile.total_payments ?? 0),
 			daysRemaining: remainingDays(accessExpiresAt),
 			trialDaysRemaining: remainingDays(trialExpiresAt),
+			plan,
 		};
 	}
 
@@ -238,6 +245,7 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			totalPayments: Number(profile.total_payments ?? 0),
 			daysRemaining: remainingDays(trialExpiresAt),
 			trialDaysRemaining: remainingDays(trialExpiresAt),
+			plan: "plus",
 		};
 	}
 
@@ -257,6 +265,7 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 		totalPayments: Number(profile.total_payments ?? 0),
 		daysRemaining: 0,
 		trialDaysRemaining: 0,
+		plan,
 	};
 }
 
@@ -335,9 +344,13 @@ export async function startTrialMembership(userId: string) {
 	return membershipFor(userId);
 }
 
-export async function grantProAccess(userId: string, paymentId: string | null, reason = "purchase") {
+export async function grantProAccess(userId: string, paymentId: string | null, reason = "purchase", plan: MembershipPlan = "plus") {
 	const db = requireSupabase();
 	const profile = await ensureProfile(userId);
+	if (paymentId) {
+		const { data: payment } = await db.from("payments").select("plan").eq("id", paymentId).eq("user_id", userId).maybeSingle();
+		if (payment?.plan === "go" || payment?.plan === "plus") plan = payment.plan;
+	}
 	const current = await membershipFor(userId);
 	const anchors = [currentTime()];
 	if (current.type === "trial" && current.trialExpiresAt) anchors.push(new Date(current.trialExpiresAt));
@@ -346,6 +359,7 @@ export async function grantProAccess(userId: string, paymentId: string | null, r
 	const expiresAt = addDays(startsAt, PRO_PASS_DAYS);
 	const { error } = await db.from("profiles").update({
 		membership_type: "pro",
+		plan,
 		membership_status: "pro_active",
 		pro_started_at: startsAt.toISOString(),
 		access_expires_at: expiresAt.toISOString(),
@@ -358,7 +372,7 @@ export async function grantProAccess(userId: string, paymentId: string | null, r
 	if (current.type === "trial") {
 		await recordTrialEvent(userId, "converted_to_pro", { startsAt: startsAt.toISOString(), expiresAt: expiresAt.toISOString() });
 	}
-	await notify(userId, reason === "renewal_extension" ? "membership_renewed" : "membership_activated", reason === "renewal_extension" ? "Your Pro Pass has been renewed" : "Your Pro Pass is active", `Your access is now active until ${expiresAt.toLocaleDateString()}.`);
+	await notify(userId, reason === "renewal_extension" ? "membership_renewed" : "membership_activated", reason === "renewal_extension" ? `${plan === "go" ? "Go" : "Plus"} plan renewed` : `${plan === "go" ? "Go" : "Plus"} plan active`, `Your access is now active until ${expiresAt.toLocaleDateString()}.`);
 	await logActivity(userId, reason === "renewal_extension" ? "membership_renewed" : "membership_activated", "membership", userId, { access_expires_at: expiresAt.toISOString(), payment_id: paymentId });
 	return { startsAt: startsAt.toISOString(), expiresAt: expiresAt.toISOString() };
 }
@@ -368,6 +382,16 @@ export async function assertActiveMembership(userId: string) {
 	if (!membership.active) {
 		const error = new Error("Membership Expired");
 		Object.assign(error, { statusCode: 403, code: "MEMBERSHIP_EXPIRED", redirectTo: "/upgrade", membership });
+		throw error;
+	}
+	return membership;
+}
+
+export async function assertPlusMembership(userId: string) {
+	const membership = await assertActiveMembership(userId);
+	if (!membership.isAdmin && membership.plan !== "plus") {
+		const error = new Error("The Plus plan is required for this feature.");
+		Object.assign(error, { statusCode: 403, code: "PLUS_PLAN_REQUIRED", membership });
 		throw error;
 	}
 	return membership;
@@ -475,4 +499,8 @@ export async function membershipUsers(filter: MembershipType | MembershipStatus 
 	return data ?? [];
 }
 
-export const planPrice = () => ({ amountCents: env.PRO_PASS_PRICE_CENTS ?? env.PRO_MONTHLY_PRICE_CENTS, currency: env.PRO_CURRENCY, days: PRO_PASS_DAYS });
+export const planPrices = () => ({
+	go: { amountCents: env.GO_PLAN_PRICE_CENTS, currency: env.PRO_CURRENCY, days: PRO_PASS_DAYS },
+	plus: { amountCents: env.PLUS_PLAN_PRICE_CENTS, currency: env.PRO_CURRENCY, days: PRO_PASS_DAYS },
+});
+export const planPrice = () => planPrices().plus;

@@ -47,6 +47,8 @@ const schema = z.object({
   PAYPAL_ENVIRONMENT: z.enum(["sandbox", "live"]).default("sandbox"),
   PRO_MONTHLY_PRICE_CENTS: z.coerce.number().int().min(1).default(1200),
   PRO_PASS_PRICE_CENTS: z.coerce.number().int().min(1).optional(),
+  GO_PLAN_PRICE_CENTS: z.coerce.number().int().min(1).default(599),
+  PLUS_PLAN_PRICE_CENTS: z.coerce.number().int().min(1).default(1999),
   PRO_CURRENCY: z.string().length(3).default("USD"),
   API_KEY_PEPPER: z.string().min(1).default("development-only")
 });
