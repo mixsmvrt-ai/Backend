@@ -8,6 +8,7 @@ const MONTHLY_GRANT_REASON = "monthly_credit_allocation";
 type CreditTransactionRow = {
 	amount: number | null;
 	transaction_type: "grant" | "usage" | "refund" | "adjustment";
+	reason: string | null;
 	created_at: string;
 };
 
@@ -16,6 +17,9 @@ export interface MonthlyCreditSummary {
 	balance: number;
 	used: number;
 	usagePercent: number;
+	textBalance: number;
+	textUsed: number;
+	textUsagePercent: number;
 	resetsOn: string;
 	textToMidiCost: number;
 	voiceToMidiCost: number;
@@ -49,35 +53,44 @@ async function ensureMonthlyAllocation(userId: string) {
 
 async function cycleTransactions(userId: string): Promise<{ window: ReturnType<typeof cycleWindow>; rows: CreditTransactionRow[] }> {
 	const window = await ensureMonthlyAllocation(userId);
-	const { data, error } = await requireSupabase().from("credit_transactions").select("amount, transaction_type, created_at").eq("user_id", userId).gte("created_at", window.startIso).lt("created_at", window.nextStartIso);
+	const { data, error } = await requireSupabase().from("credit_transactions").select("amount, transaction_type, reason, created_at").eq("user_id", userId).gte("created_at", window.startIso).lt("created_at", window.nextStartIso);
 	if (error) throw error;
 	return { window, rows: (data ?? []) as CreditTransactionRow[] };
 }
 
 export async function monthlyCreditSummary(userId: string): Promise<MonthlyCreditSummary> {
 	const { window, rows } = await cycleTransactions(userId);
-	const balance = rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
-	const used = rows
-		.filter((row) => row.transaction_type === "usage")
+	const usageRows = rows.filter((row) => row.transaction_type === "usage");
+	const textUsed = usageRows
+		.filter((row) => row.reason === "text_to_midi_generation")
 		.reduce((sum, row) => sum + Math.abs(Number(row.amount ?? 0)), 0);
+	const sharedUsed = usageRows
+		.filter((row) => row.reason !== "text_to_midi_generation")
+		.reduce((sum, row) => sum + Math.abs(Number(row.amount ?? 0)), 0);
+	const balance = Math.max(0, MONTHLY_CREDIT_ALLOCATION - sharedUsed);
+	const textBalance = Math.max(0, MONTHLY_CREDIT_ALLOCATION - textUsed);
 	const textToMidiGenerationLimit = Math.floor(MONTHLY_CREDIT_ALLOCATION / TEXT_TO_MIDI_CREDIT_COST);
 	return {
 		monthlyAllocation: MONTHLY_CREDIT_ALLOCATION,
 		balance,
-		used,
-		usagePercent: Math.min(100, (used / MONTHLY_CREDIT_ALLOCATION) * 100),
+		used: sharedUsed,
+		usagePercent: Math.min(100, (sharedUsed / MONTHLY_CREDIT_ALLOCATION) * 100),
+		textBalance,
+		textUsed,
+		textUsagePercent: Math.min(100, (textUsed / MONTHLY_CREDIT_ALLOCATION) * 100),
 		resetsOn: window.resetsOnIso,
 		textToMidiCost: TEXT_TO_MIDI_CREDIT_COST,
 		voiceToMidiCost: VOICE_TO_MIDI_CREDIT_COST,
 		textToMidiGenerationLimit,
-		textToMidiGenerationsRemaining: Math.max(0, Math.floor(balance / TEXT_TO_MIDI_CREDIT_COST)),
+		textToMidiGenerationsRemaining: Math.max(0, Math.floor(textBalance / TEXT_TO_MIDI_CREDIT_COST)),
 	};
 }
 
-export async function assertCreditsAvailable(userId: string, amount: number) {
+export async function assertCreditsAvailable(userId: string, amount: number, bucket: "shared" | "text_to_midi" = "shared") {
 	const summary = await monthlyCreditSummary(userId);
-	if (summary.balance < amount) {
-		const error = new Error(`Not enough credits. ${amount} credits required, ${summary.balance} remaining.`);
+	const balance = bucket === "text_to_midi" ? summary.textBalance : summary.balance;
+	if (balance < amount) {
+		const error = new Error(`Not enough credits. ${amount} credits required, ${balance} remaining.`);
 		Object.assign(error, { statusCode: 402, code: "INSUFFICIENT_CREDITS", credits: summary });
 		throw error;
 	}

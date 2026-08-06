@@ -29,7 +29,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   if (!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY) throw new Error("AI generation is unavailable because the provider is not configured.");
   const workflow = input.workflow ?? "text_to_midi";
   const creditCost = workflowCreditCost(workflow);
-  await assertCreditsAvailable(userId, creditCost);
+  await assertCreditsAvailable(userId, creditCost, workflow === "voice_to_midi" ? "shared" : "text_to_midi");
   const selection = await modelSelector.forUser(userId);
   const db = requireSupabase();
   let contextualPrompt = input.prompt;
