@@ -39,7 +39,13 @@ const supportMessageSchema = z.object({
 
 accountRouter.get("/profile", async (request: AuthRequest, response, next) => {
   try {
-    const { data, error } = await requireSupabase()
+    const db = requireSupabase();
+    const { error: profileError } = await db
+      .from("profiles")
+      .upsert({ id: request.user!.id }, { onConflict: "id", ignoreDuplicates: true });
+    if (profileError) throw profileError;
+
+    const { data, error } = await db
       .from("profiles")
       .select("*, user_preferences(*)")
       .eq("id", request.user!.id)
