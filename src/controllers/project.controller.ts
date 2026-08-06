@@ -29,7 +29,15 @@ type ProjectConversationRow = {
 	bpm: number | null;
 	musical_key: string | null;
 };
-function failure(response: Response, _error: unknown) { return response.status(500).json({ error: "Server error. Please try again in a few minutes." }); }
+function failure(response: Response, error: unknown) {
+	console.error("[project] message request failed", {
+		error: error instanceof Error ? error.message : error,
+		code: typeof error === "object" && error !== null && "code" in error ? error.code : undefined,
+	});
+	const statusCode = typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
+	const isExpected = statusCode >= 400 && statusCode < 500;
+	return response.status(statusCode).json({ error: isExpected && error instanceof Error ? error.message : "Server error. Please try again in a few minutes." });
+}
 
 function looksLikeMusicQuestion(prompt: string) {
 	return /(\?|\bwhat\b|\bwhich\b|\bwhy\b|\bhow\b|\bshould\b|\bplugin\b|\bpreset\b|\bsound\b|\blayer\b|\barrangement\b|\beq\b|\breverb\b|\b808\b|\bbass\b|\bscale\b|\bkey\b|\bchord\b|\bcounter\b)/i.test(prompt);
