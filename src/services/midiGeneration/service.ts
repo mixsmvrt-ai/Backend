@@ -95,19 +95,39 @@ function chunkLegacyNotes(notes: MidiNoteEvent[]): LegacyNoteEvent[] {
   }).slice(0, 2048);
 }
 
-function chordTrackFromComposition(composition: AiComposition) {
+function chordRhythm(groove: MidiOptions["groove"], complexity: OrchestrationInput["complexity"]) {
+  if (groove === "syncopated" || groove === "pushed") return [0, 0.75, 1.5, 2.75, 3.5].map((startBeat) => ({ startBeat, durationBeats: startBeat === 2.75 ? 0.75 : 0.5 }));
+  if (groove === "swing") return [{ startBeat: 0, durationBeats: 1.25 }, { startBeat: 1.5, durationBeats: 0.75 }, { startBeat: 3, durationBeats: 0.75 }];
+  if (complexity === "high") return [{ startBeat: 0, durationBeats: 1 }, { startBeat: 1.75, durationBeats: 0.5 }, { startBeat: 3, durationBeats: 0.75 }];
+  return [{ startBeat: 0, durationBeats: 4 }];
+}
+
+function chordTrackFromComposition(composition: AiComposition, options: MidiOptions, complexity: OrchestrationInput["complexity"]) {
   const tonic = normalizeKeyTonic(composition.key);
   const scaleSteps = isMinorScale(composition.scale, composition.key) ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
   const beatsPerBar = composition.timeSignature[0];
   const notes: MidiNoteEvent[] = [];
+  const pattern = chordRhythm(options.groove, complexity);
   for (const chord of composition.chordProgression) {
     const degreeInfo = romanDegree(chord.romanNumeral);
     const rootPitchClass = (tonic + scaleSteps[degreeInfo.degree] + degreeInfo.accidental + 12) % 12;
     const rootPitch = 55 + rootPitchClass;
     const startBeat = (Math.max(1, chord.startBar) - 1) * beatsPerBar;
-    const durationBeats = Math.max(1, chord.bars) * beatsPerBar;
-    for (const interval of chordIntervals(chord.symbol, chord.romanNumeral)) {
-      notes.push({ pitch: rootPitch + interval, startBeat, durationBeats, velocity: 72 });
+    const chordBars = Math.max(1, chord.bars);
+    const intervals = chordIntervals(chord.symbol, chord.romanNumeral);
+    for (let bar = 0; bar < chordBars; bar += 1) {
+      const barStart = startBeat + (bar * beatsPerBar);
+      for (const hit of pattern) {
+        if (hit.startBeat >= beatsPerBar) continue;
+        for (const interval of intervals) {
+          notes.push({
+            pitch: rootPitch + interval,
+            startBeat: barStart + hit.startBeat,
+            durationBeats: Math.min(hit.durationBeats, beatsPerBar - hit.startBeat),
+            velocity: hit.startBeat === 0 ? 78 : 68,
+          });
+        }
+      }
     }
   }
   return toMidiNotes(notes);
@@ -173,13 +193,21 @@ function drumsFromSections(sections: ReturnType<typeof buildSections>, beatsPerB
 
 function resolveOptions(input: OrchestrationInput): MidiOptions {
   const defaults = midiOptionsSchema.parse(input.midiOptions ?? {});
+  const prompt = input.prompt.toLowerCase();
+  const inferredGroove: MidiOptions["groove"] | undefined = /syncop|groove|groovy|bounce|bouncy|off[- ]?beat|dancehall|afro|skank|staccato|rhythmic/.test(prompt)
+    ? "syncopated"
+    : /swing|shuffle|triplet/.test(prompt)
+      ? "swing"
+      : /pushed|urgent|driving|energetic/.test(prompt)
+        ? "pushed"
+        : undefined;
   return {
     ...defaults,
     timingVariationBeats: input.midiOptions?.timingVariationBeats ?? Number((0.01 + (input.variationAmount * 0.03)).toFixed(4)),
     velocityVariation: input.midiOptions?.velocityVariation ?? Math.round(6 + (input.variationAmount * 14)),
     swing: input.midiOptions?.swing ?? (input.kind === "drums" ? 0.12 : 0.06),
     quantizeStrength: input.midiOptions?.quantizeStrength ?? (input.complexity === "high" ? 0.58 : input.complexity === "low" ? 0.82 : 0.7),
-    groove: input.midiOptions?.groove ?? (input.kind === "drums" ? "syncopated" : input.complexity === "low" ? "tight" : "laid_back"),
+    groove: input.midiOptions?.groove ?? (input.kind === "drums" ? "syncopated" : inferredGroove ?? (input.complexity === "low" ? "tight" : "laid_back")),
   };
 }
 
@@ -225,7 +253,7 @@ export class MidiGenerationService {
     const beatsPerBar = composition.timeSignature[0];
 
     const melodyNotes = arrangeNotes(toMidiNotes(composition.melody), sections);
-    const chordNotes = arrangeNotes(chordTrackFromComposition(composition), sections);
+    const chordNotes = arrangeNotes(chordTrackFromComposition(composition, options, input.complexity), sections);
     const basslineNotes = arrangeNotes(toMidiNotes(composition.bassline), sections, (section) => basslineFromChords(composition).filter((note) => note.startBeat >= section.startBeat && note.startBeat < section.endBeat));
     const counterMelodyNotes = arrangeNotes(toMidiNotes(composition.counterMelody), sections, (section) => counterMelodyFromMelody(melodyNotes).filter((note) => note.startBeat >= section.startBeat && note.startBeat < section.endBeat));
     const drumNotes = arrangeNotes(drumsFromSections(sections, beatsPerBar), sections);

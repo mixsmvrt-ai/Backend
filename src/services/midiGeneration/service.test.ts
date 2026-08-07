@@ -53,4 +53,24 @@ describe("MidiGenerationService", () => {
     expect(result.exports.find((file) => file.kind === "single")?.buffer.subarray(0, 4).toString()).toBe("MThd");
     expect(result.exports.find((file) => file.kind === "package")?.buffer.subarray(0, 2).toString("hex")).toBe("504b");
   });
+
+  it("turns groove prompts into rhythmic chord attacks instead of sustained stacks", () => {
+    const service = new MidiGenerationService();
+    const input: OrchestrationInput = {
+      prompt: "dark groovy dancehall chord progression with bounce and off-beat movement",
+      kind: "chords",
+      pluginSuggestions: false,
+      lengthBars: 4,
+      complexity: "medium",
+      variationAmount: 0.5,
+      timeSignature: [4, 4],
+    };
+
+    const result = service.build(input, composition, "generation-groove");
+    const chordTrack = result.tracks.find((track) => track.role === "chords");
+
+    expect(chordTrack?.notes.length).toBeGreaterThan(6);
+    expect(Math.max(...(chordTrack?.notes.map((note) => note.durationBeats) ?? []))).toBeLessThan(4);
+    expect(chordTrack?.notes.some((note) => note.startBeat % 1 !== 0)).toBe(true);
+  });
 });
