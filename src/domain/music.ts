@@ -5,7 +5,7 @@ export const generationKinds = ["melody", "chords", "counter_melody", "bassline"
 
 export const generationSchema = z.object({
   prompt: z.string().trim().min(3).max(1000),
-  kind: z.enum(generationKinds).default("melody"),
+  kind: z.enum(generationKinds).default("full_composition"),
   genre: z.string().max(80).optional(),
   mood: z.string().max(80).optional(),
   scale: z.string().max(40).optional(),
