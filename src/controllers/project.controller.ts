@@ -3,8 +3,7 @@ import { z } from "zod";
 import { requireSupabase } from "../config/supabase.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { orchestrateGeneration } from "../services/orchestration.service.js";
-import { midiAnalysisService } from "../services/midiAnalysisService.js";
-import { musicBrainService } from "../services/musicBrainService.js";
+import { generateProjectConversationReply } from "../services/projectConversationAi.service.js";
 import { orchestrationSchema } from "../domain/music.js";
 
 const projectSchema = z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""), tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]), genre: z.string().max(80).nullable().optional(), bpm: z.number().int().min(40).max(240).nullable().optional(), musicalKey: z.string().max(24).nullable().optional() });
@@ -39,8 +38,17 @@ function failure(response: Response, error: unknown) {
 	return response.status(statusCode).json({ error: isExpected && error instanceof Error ? error.message : "Server error. Please try again in a few minutes." });
 }
 
-function looksLikeMusicQuestion(prompt: string) {
-	return /(\?|\bwhat\b|\bwhich\b|\bwhy\b|\bhow\b|\bshould\b|\bplugin\b|\bpreset\b|\bsound\b|\blayer\b|\barrangement\b|\beq\b|\breverb\b|\b808\b|\bbass\b|\bscale\b|\bkey\b|\bchord\b|\bcounter\b)/i.test(prompt);
+function looksLikeGenerationRequest(prompt: string) {
+	return /\b(generate|create|make|write|compose|produce|add|give me|next)\b/i.test(prompt)
+		&& /\b(midi|melody|chord|chords|harmony|bass|bassline|counter|drum|drums|progression|part|variation|layer)\b/i.test(prompt);
+}
+
+function inferGenerationKind(prompt: string) {
+	if (/\b(chord|chords|harmony|progression)\b/i.test(prompt)) return "chords" as const;
+	if (/\b(bass|bassline|808)\b/i.test(prompt)) return "bassline" as const;
+	if (/\b(counter|answer)\b/i.test(prompt)) return "counter_melody" as const;
+	if (/\b(drum|drums|percussion)\b/i.test(prompt)) return "drums" as const;
+	return "melody" as const;
 }
 
 export async function read(request: AuthRequest, response: Response) {
@@ -93,13 +101,14 @@ export async function createMessage(request: AuthRequest, response: Response) {
 		const project = projectData as ProjectConversationRow | null;
 		if (projectError || !project) return response.status(404).json({ error: "Project not found" });
 
-		const analysis = await midiAnalysisService.getOrCreateLatestProjectAnalysis(request.user!.id, projectId);
-		const shouldAnswerWithMusicBrain = analysis && looksLikeMusicQuestion(parsed.data.content);
+		const { data: recentMessages, error: recentMessagesError } = await db.from("project_messages").select("role, content").eq("project_id", projectId).eq("user_id", request.user!.id).order("created_at", { ascending: false }).limit(6);
+		if (recentMessagesError) throw recentMessagesError;
+		const wantsGeneration = Boolean(parsed.data.generation) || looksLikeGenerationRequest(parsed.data.content);
 
-		if (!shouldAnswerWithMusicBrain) {
+		if (wantsGeneration) {
 			const generationInput = orchestrationSchema.parse({
 				prompt: parsed.data.content,
-				kind: parsed.data.generation?.kind ?? "melody",
+				kind: parsed.data.generation?.kind ?? inferGenerationKind(parsed.data.content),
 				workflow: "text_to_midi",
 				key: parsed.data.generation?.key,
 				scale: parsed.data.generation?.scale?.toLowerCase(),
@@ -120,33 +129,21 @@ export async function createMessage(request: AuthRequest, response: Response) {
 		const { error: userMessageError } = await db.from("project_messages").insert({ project_id: projectId, user_id: request.user!.id, role: "user", content: parsed.data.content });
 		if (userMessageError) throw userMessageError;
 
-		const reply = await musicBrainService.reply({
-			projectId,
+		const reply = await generateProjectConversationReply({
 			userId: request.user!.id,
-			prompt: parsed.data.content,
-			analysis,
-			projectGenre: project.genre ?? null,
-			projectMood: project.mood ?? null,
+			question: parsed.data.content,
+			history: [...(recentMessages ?? [])].reverse(),
+			project: { genre: project.genre, mood: project.mood, bpm: project.bpm, key: project.musical_key },
 		});
 
 		const { data: assistantMessage, error: assistantMessageError } = await db.from("project_messages").insert({ project_id: projectId, user_id: request.user!.id, role: "assistant", content: reply.content }).select("id, role, content, generation_id, created_at").single();
 		if (assistantMessageError) throw assistantMessageError;
-
-		await musicBrainService.updateConversationContext({
-			projectId,
-			userId: request.user!.id,
-			question: parsed.data.content,
-			assistantReply: reply.content,
-			pluginNames: reply.pluginRecommendations.map((recommendation) => recommendation.plugin),
-		});
 
 		response.status(201).json({
 			data: {
 				mode: "assistant",
 				message: assistantMessage,
 				recommendedDelayMs: reply.recommendedDelayMs,
-				analysis,
-				pluginRecommendations: reply.pluginRecommendations,
 			},
 		});
 	} catch (error) {
