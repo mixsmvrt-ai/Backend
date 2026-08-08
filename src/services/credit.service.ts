@@ -6,6 +6,12 @@ export const TEXT_TO_MIDI_CREDIT_COST = 10;
 export const VOICE_TO_MIDI_CREDIT_COST = 50;
 const MONTHLY_GRANT_REASON = "monthly_credit_allocation";
 
+async function monthlyAllocationFor(userId: string) {
+	const { data, error } = await requireSupabase().from("profiles").select("plan").eq("id", userId).single();
+	if (error) throw error;
+	return data?.plan === "plus" ? PLUS_MONTHLY_CREDIT_ALLOCATION : GO_MONTHLY_CREDIT_ALLOCATION;
+}
+
 type CreditTransactionRow = {
 	amount: number | null;
 	transaction_type: "grant" | "usage" | "refund" | "adjustment";
@@ -44,21 +50,17 @@ function cycleWindow(now = new Date()) {
 async function ensureMonthlyAllocation(userId: string) {
 	const db = requireSupabase();
 	const window = cycleWindow();
-	const { data: profile, error: profileError } = await db.from("profiles").select("plan").eq("id", userId).single();
-	if (profileError) throw profileError;
-	const monthlyAllocation = profile?.plan === "plus" ? PLUS_MONTHLY_CREDIT_ALLOCATION : GO_MONTHLY_CREDIT_ALLOCATION;
-	const { data, error } = await db.from("credit_transactions").select("id").eq("user_id", userId).eq("reason", MONTHLY_GRANT_REASON).gte("created_at", window.startIso).lt("created_at", window.nextStartIso).limit(1);
+	const monthlyAllocation = await monthlyAllocationFor(userId);
+	const { data, error } = await db.from("credit_transactions").select("amount, transaction_type, reason").eq("user_id", userId).gte("created_at", window.startIso).lt("created_at", window.nextStartIso).in("reason", [MONTHLY_GRANT_REASON, "monthly_credit_plan_adjustment"]);
 	if (error) throw error;
-	if ((data ?? []).length === 0) {
-		const { error: grantError } = await db.from("credit_transactions").insert({ user_id: userId, amount: monthlyAllocation, transaction_type: "grant", reason: MONTHLY_GRANT_REASON, metadata: { cycle: window.periodKey, resetsOn: window.resetsOnIso, plan: profile?.plan ?? "go" } });
+	const allocated = (data ?? []).reduce((sum, row) => sum + (row.transaction_type === "grant" || row.transaction_type === "adjustment" ? Math.max(0, Number(row.amount ?? 0)) : 0), 0);
+	if (allocated === 0) {
+		const { error: grantError } = await db.from("credit_transactions").insert({ user_id: userId, amount: monthlyAllocation, transaction_type: "grant", reason: MONTHLY_GRANT_REASON, metadata: { cycle: window.periodKey, resetsOn: window.resetsOnIso, plan: monthlyAllocation === PLUS_MONTHLY_CREDIT_ALLOCATION ? "plus" : "go" } });
 		if (grantError) throw grantError;
 		return window;
 	}
-	const { data: grantRows, error: grantRowsError } = await db.from("credit_transactions").select("amount").eq("user_id", userId).eq("reason", MONTHLY_GRANT_REASON).gte("created_at", window.startIso).lt("created_at", window.nextStartIso).limit(1);
-	if (grantRowsError) throw grantRowsError;
-	const granted = Number(grantRows?.[0]?.amount ?? 0);
-	if (monthlyAllocation > granted) {
-		const { error: adjustmentError } = await db.from("credit_transactions").insert({ user_id: userId, amount: monthlyAllocation - granted, transaction_type: "adjustment", reason: "monthly_credit_plan_adjustment", metadata: { cycle: window.periodKey, plan: profile?.plan ?? "go" } });
+	if (monthlyAllocation > allocated) {
+		const { error: adjustmentError } = await db.from("credit_transactions").insert({ user_id: userId, amount: monthlyAllocation - allocated, transaction_type: "adjustment", reason: "monthly_credit_plan_adjustment", metadata: { cycle: window.periodKey, plan: monthlyAllocation === PLUS_MONTHLY_CREDIT_ALLOCATION ? "plus" : "go" } });
 		if (adjustmentError) throw adjustmentError;
 	}
 	return window;
@@ -73,9 +75,9 @@ async function cycleTransactions(userId: string): Promise<{ window: ReturnType<t
 
 export async function monthlyCreditSummary(userId: string): Promise<MonthlyCreditSummary> {
 	const { window, rows } = await cycleTransactions(userId);
+	const monthlyAllocation = await monthlyAllocationFor(userId);
 	const usageRows = rows.filter((row) => row.transaction_type === "usage");
 	const used = usageRows.reduce((sum, row) => sum + Math.abs(Number(row.amount ?? 0)), 0);
-	const monthlyAllocation = rows.filter((row) => row.transaction_type === "grant" || row.transaction_type === "adjustment").reduce((sum, row) => sum + Math.max(0, Number(row.amount ?? 0)), 0);
 	const balance = Math.max(0, monthlyAllocation - used);
 	const textToMidiGenerationLimit = Math.floor(monthlyAllocation / TEXT_TO_MIDI_CREDIT_COST);
 	return {
