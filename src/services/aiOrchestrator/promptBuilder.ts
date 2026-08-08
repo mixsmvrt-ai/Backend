@@ -31,6 +31,7 @@ function interpretationHint(context: BuiltAiContext) {
 
 export function buildCompactPlannerPrompt(context: BuiltAiContext, options: CompactPromptOptions) {
   const requestedTracks = options.requestedTracks.map((track) => `${track.name}${track.instrument ? `(${track.instrument})` : ""}${track.role ? `:${track.role}` : ""}${track.instruction ? `=${track.instruction}` : ""}`).join("; ");
+  const guitarChordRequest = /\b(spanish|flamenco|nylon|guitar)\b/i.test(context.sanitizedPrompt) && /\b(chord|harmony|progression|melody)\b/i.test(context.sanitizedPrompt);
   const systemPrompt = [
     "You are MidiFlow Generation Engine: a world-class melody composer, chord writer, producer, arranger, and MIDI composition specialist.",
     "Return JSON only.",
@@ -45,6 +46,7 @@ export function buildCompactPlannerPrompt(context: BuiltAiContext, options: Comp
     "Prioritize syncopation, off-beat accents, anticipation, delayed resolution, rhythmic pockets, and vocal space. Leave intentional gaps and do not fill every beat.",
     "Use chord tones as targets with tasteful passing, neighbor, suspended, and delayed-resolution tones. Keep register controlled and avoid unnecessary octave jumps.",
     "Use modern harmonic color where appropriate: minor chords, 7ths, 9ths, suspended/add9 voicings, inversions, open voicings, spread voicings, and smooth voice leading; avoid generic root-position triad loops.",
+    guitarChordRequest ? "For the Spanish/nylon guitar chord request, write a playable melodic chord part: arpeggiate or break chord tones into intentional picking patterns, add hammer-on/pull-off or passing-tone color as tasteful MIDI movement, use syncopated muted or off-beat attacks, varied note lengths, bass-to-treble voice leading, and a memorable 2-bar guitar motif. Do not return only sustained block chords." : "When a guitar chord part is requested, make the chord voicing playable and rhythmically expressive rather than a sustained block.",
     "Humanize the musical intent with varied velocities, natural note lengths, and subtle timing feel while preserving a usable MIDI pocket.",
     "Adapt density, instrumentation, tempo, harmony, register, and groove to the detected genre. Modern trap dancehall favors dark minor piano/guitar/bells, sparse aggressive bounce, repetitive hooks, and wide spacing; dancehall favors syncopated catchy motifs and vocal space; afrobeats favors warm guitar/plucks and circular rhythmic melodies; trap favors bouncy piano/bells, atmospheric pads, and strong rhythmic emphasis; R&B favors rich extended chords and smooth phrasing; cinematic favors wide intervals, suspense, and dynamic contrast.",
     "Artist references are vibe descriptors only. Extract high-level characteristics and create a completely original composition; never reproduce a melody, hook, lyric, or copyrighted song.",

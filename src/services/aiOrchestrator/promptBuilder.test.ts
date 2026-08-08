@@ -53,4 +53,15 @@ describe("compact planner prompt", () => {
     expect(result.systemPrompt).toContain("modern harmonic color");
     expect(result.systemPrompt).toContain("exactly 8 bars");
   });
+
+  it("turns Spanish guitar chord requests into melodic playable parts", () => {
+    const result = buildCompactPlannerPrompt({ ...context(), sanitizedPrompt: "Kraff-inspired Spanish guitar chord melody for trap dancehall" }, {
+      workflow: "text_to_midi",
+      bars: 8,
+      requestedTracks: [{ name: "Spanish Guitar Chords", role: "chords", instrument: "Nylon Guitar" }],
+    });
+
+    expect(result.systemPrompt).toContain("arpeggiate or break chord tones");
+    expect(result.systemPrompt).toContain("Do not return only sustained block chords");
+  });
 });
