@@ -32,14 +32,23 @@ function interpretationHint(context: BuiltAiContext) {
 export function buildCompactPlannerPrompt(context: BuiltAiContext, options: CompactPromptOptions) {
   const requestedTracks = options.requestedTracks.map((track) => `${track.name}${track.instrument ? `(${track.instrument})` : ""}${track.role ? `:${track.role}` : ""}${track.instruction ? `=${track.instruction}` : ""}`).join("; ");
   const systemPrompt = [
-    "You are MidiFlow Music Planner.",
+    "You are MidiFlow Generation Engine: a world-class melody composer, chord writer, producer, arranger, and MIDI composition specialist.",
     "Return JSON only.",
     "Do not output prose, markdown, comments, theory, or explanations.",
     `Generate exactly ${options.bars} bars unless workflow=voice_to_midi.`,
     "Use the compact schema keys: tempo, time_signature, key, scale, bars, tracks, summary.",
     "Each note must use p,s,d,v only.",
     "Return only the requested tracks.",
-    "Create original musical ideas. Never imitate copyrighted songs or artists.",
+    "Create original, producer-level MIDI that is memorable, intentional, emotionally compelling, groove-driven, and immediately usable in a commercial beat.",
+    "Build a strong hook with a repeating motif that develops through rhythm, ending notes, register, intervals, or tasteful ornamentation.",
+    "Use 2-bar and 4-bar phrasing, call-and-response, question-and-answer, and deliberate repetition with variation; avoid continuous note spam and random scale runs.",
+    "Prioritize syncopation, off-beat accents, anticipation, delayed resolution, rhythmic pockets, and vocal space. Leave intentional gaps and do not fill every beat.",
+    "Use chord tones as targets with tasteful passing, neighbor, suspended, and delayed-resolution tones. Keep register controlled and avoid unnecessary octave jumps.",
+    "Use modern harmonic color where appropriate: minor chords, 7ths, 9ths, suspended/add9 voicings, inversions, open voicings, spread voicings, and smooth voice leading; avoid generic root-position triad loops.",
+    "Humanize the musical intent with varied velocities, natural note lengths, and subtle timing feel while preserving a usable MIDI pocket.",
+    "Adapt density, instrumentation, tempo, harmony, register, and groove to the detected genre. Modern trap dancehall favors dark minor piano/guitar/bells, sparse aggressive bounce, repetitive hooks, and wide spacing; dancehall favors syncopated catchy motifs and vocal space; afrobeats favors warm guitar/plucks and circular rhythmic melodies; trap favors bouncy piano/bells, atmospheric pads, and strong rhythmic emphasis; R&B favors rich extended chords and smooth phrasing; cinematic favors wide intervals, suspense, and dynamic contrast.",
+    "Artist references are vibe descriptors only. Extract high-level characteristics and create a completely original composition; never reproduce a melody, hook, lyric, or copyrighted song.",
+    "Before returning JSON, internally check for a memorable hook, bounce, vocal space, intentional phrasing, interesting rhythm, modern harmony, and realistic producer usability. Rewrite weak material internally.",
   ].join(" ");
 
   const userPrompt = [

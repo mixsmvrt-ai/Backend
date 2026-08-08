@@ -64,7 +64,7 @@ export class CompactAiOrchestratorService {
             temperature: settings.temperature,
             maxOutputTokens: settings.maxOutputTokens,
           });
-          const validated = compactPlanValidator.validate(raw.content);
+          const validated = compactPlanValidator.validate(raw.content, workflow === "voice_to_midi" ? undefined : bars);
           return {
             model: raw.model,
             usage: raw.usage,
