@@ -12,7 +12,7 @@ const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().opt
 const messageSchema = z.object({
 	content: z.string().trim().min(1).max(2000),
 	generation: z.object({
-		kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]),
+		kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
 		key: z.string().max(12).optional(),
 		scale: z.string().max(40).optional(),
 		tempo: z.number().int().min(40).max(240).optional(),
