@@ -369,6 +369,10 @@ export async function grantProAccess(userId: string, paymentId: string | null, r
 	}).eq("id", userId);
 	if (error) throw error;
 	await recordMembershipHistory(userId, { type: "pro", status: "pro_active", startsAt, expiresAt, reason, paymentId });
+	if (paymentId) {
+		const { handleSuccessfulReferralPayment } = await import("./referral.service.js");
+		await handleSuccessfulReferralPayment(paymentId, { orderId: paymentId, paymentSource: "paypal_capture" });
+	}
 	if (current.type === "trial") {
 		await recordTrialEvent(userId, "converted_to_pro", { startsAt: startsAt.toISOString(), expiresAt: expiresAt.toISOString() });
 	}

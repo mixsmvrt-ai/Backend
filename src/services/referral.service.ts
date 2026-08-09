@@ -66,6 +66,13 @@ type CommissionRow = {
   payout_request_id?: string | null;
 };
 
+export type ReferralDiscount = {
+  percent: 5 | 7;
+  originalAmountCents: number;
+  discountAmountCents: number;
+  amountCents: number;
+};
+
 function defaults(): ReferralSettings {
   return {
     enabled: true,
@@ -203,6 +210,15 @@ export async function trackReferralClick(input: { referralCode: string; visitorS
   const { error: insertError } = await db.from("referral_clicks").insert({ referral_code: referralCode, referrer_user_id: profile.id, visitor_session_id: input.visitorSessionId ?? null, landing_path: input.landingPath ?? null, source_ip: input.sourceIp ?? null, user_agent: input.userAgent ?? null, device_fingerprint: input.deviceFingerprint ?? null, signup_source: input.signupSource ?? null });
   if (insertError) throw insertError;
   return { tracked: true };
+}
+
+export async function referralDiscountFor(userId: string, plan: "go" | "plus", originalAmountCents: number): Promise<ReferralDiscount | null> {
+  const { data, error } = await requireSupabase().from("referrals").select("id").eq("referred_user_id", userId).in("status", ["trial_active", "signed_up", "converted", "pending", "eligible", "paid"]).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const percent = plan === "go" ? 5 : 7;
+  const discountAmountCents = Math.round(originalAmountCents * (percent / 100));
+  return { percent, originalAmountCents, discountAmountCents, amountCents: originalAmountCents - discountAmountCents };
 }
 
 export async function referralDashboard(userId: string, origin: string) {
