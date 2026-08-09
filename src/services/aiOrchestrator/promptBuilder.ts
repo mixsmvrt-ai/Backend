@@ -50,6 +50,7 @@ export function buildCompactPlannerPrompt(context: BuiltAiContext, options: Comp
     "Humanize the musical intent with varied velocities, natural note lengths, and subtle timing feel while preserving a usable MIDI pocket.",
     "Adapt density, instrumentation, tempo, harmony, register, and groove to the detected genre. Modern trap dancehall favors dark minor piano/guitar/bells, sparse aggressive bounce, repetitive hooks, and wide spacing; dancehall favors syncopated catchy motifs and vocal space; afrobeats favors warm guitar/plucks and circular rhythmic melodies; trap favors bouncy piano/bells, atmospheric pads, and strong rhythmic emphasis; R&B favors rich extended chords and smooth phrasing; cinematic favors wide intervals, suspense, and dynamic contrast.",
     "Artist references are vibe descriptors only. Extract high-level characteristics and create a completely original composition; never reproduce a melody, hook, lyric, or copyrighted song.",
+    "Treat the curated MIDI reference DNA as the primary musical quality anchor. Match its blended groove, density, phrasing, register, tension, voicing color, and human feel, but create new notes, rhythms, motifs, and progressions.",
     "Before returning JSON, internally check for a memorable hook, bounce, vocal space, intentional phrasing, interesting rhythm, modern harmony, and realistic producer usability. Rewrite weak material internally.",
   ].join(" ");
 
@@ -59,6 +60,7 @@ export function buildCompactPlannerPrompt(context: BuiltAiContext, options: Comp
     `music_brain=genre:${context.musicBrain.context.genre};mood:${context.musicBrain.context.mood};tempo:${context.musicBrain.context.tempo};key:${context.musicBrain.context.key};scale:${context.musicBrain.context.scale};time:${context.musicBrain.context.timeSignature.join("/")};energy:${context.musicBrain.context.energy};complexity:${context.musicBrain.context.complexity}`,
     context.musicBrain.context.tempoAdvisory ? `tempo_note=${context.musicBrain.context.tempoAdvisory.message}` : "",
     `artist=${context.artist.translatedGenre};groove=${context.artist.grooveStyle};melody=${context.artist.melodyStyle};production=${context.artist.productionStyle}`,
+    `reference_dna=${context.references?.featureSummary ?? "unavailable"}`,
     `knowledge=${summarizeKnowledge(context)}`,
     `interpretation=${interpretationHint(context)}`,
     context.projectHistory.length ? `project_history=${context.projectHistory.slice(-4).join(" || ")}` : "",

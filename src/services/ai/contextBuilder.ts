@@ -8,6 +8,7 @@ import type { MusicInterpretationRecord } from "../musicInterpretation/index.js"
 import type { AiContextRepository, AiGenerateInput, BuiltAiContext } from "./types.js";
 import { DEFAULT_PROMPT_HISTORY_LIMIT, PROMPT_INJECTION_PATTERNS } from "./constants.js";
 import { AiOrchestrationError } from "./types.js";
+import { referenceLibraryService } from "../referenceLibrary/service.js";
 
 type InterpretationRow = {
   id: string;
@@ -100,6 +101,16 @@ export class ContextBuilder {
       tonality: musicBrain.context.scale,
       instrument: musicBrain.context.instrumentSuggestions[0],
     });
+    const references = await referenceLibraryService.retrieve({
+      prompt: sanitizedPrompt,
+      genre: musicBrain.context.genre,
+      mood: musicBrain.context.mood,
+      instrument: musicBrain.context.instrumentSuggestions[0],
+      tempo: musicBrain.context.tempo,
+      key: musicBrain.context.key,
+      scale: musicBrain.context.scale,
+      artist: artist.translatedGenre,
+    });
     return {
       prompt: contextualPrompt,
       sanitizedPrompt,
@@ -116,6 +127,7 @@ export class ContextBuilder {
         plugins: entry.plugins.map((plugin) => ({ category: plugin.category, description: plugin.description })),
       })),
       projectHistory,
+      references,
       userPreferences: input.userPreferences,
     };
   }

@@ -7,6 +7,26 @@ describe("Artist Inspiration Engine", () => {
     expect(result.map((item) => item.artistName)).toContain("Skippa");
   });
 
+  it("detects Feloni19 across common generation prompts", async () => {
+    for (const prompt of [
+      "Feloni19 type melody",
+      "Feloni19 trap dancehall piano",
+      "Feloni19 dark guitar",
+      "Feloni19 emotional keys",
+    ]) {
+      const result = await artistDetectionService.detect(prompt);
+      expect(result.map((item) => item.artistName)).toContain("Feloni19");
+    }
+  });
+
+  it("translates Feloni19 into an original vibe profile", async () => {
+    const analysis = await artistInspirationService.analyze({ prompt: "Feloni19 emotional keys" });
+    expect(analysis.detectedArtists).toContain("Feloni19");
+    expect(analysis.sanitizedPrompt.toLowerCase()).not.toContain("feloni19");
+    expect(analysis.originalityNotice.toLowerCase()).toContain("original");
+    expect(analysis.translatedInstruments).toEqual(expect.arrayContaining(["Dark Piano", "Emotional Piano"]));
+  });
+
   it("translates artist prompts into generalized characteristics", async () => {
     const analysis = await artistInspirationService.analyze({ prompt: "Metro Boomin style dark trap bells" });
     const result = publicArtistInspiredContext(analysis);

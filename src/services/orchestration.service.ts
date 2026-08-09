@@ -11,6 +11,7 @@ import { midiAnalysisService } from "./midiAnalysisService.js";
 import { modelSelector } from "./ai/modelSelector.js";
 import { assertPlusMembership } from "./membership.service.js";
 import { musicBrainService } from "./musicBrain/index.js";
+import { referenceLibraryService } from "./referenceLibrary/service.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -67,6 +68,15 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     scale: input.scale ?? musicBrain.context.scale,
   };
   const referencePrompt = await drumReferencePrompt(input);
+  const referenceBlend = await referenceLibraryService.retrieve({
+    prompt: contextualPrompt,
+    genre: resolvedInput.genre,
+    mood: resolvedInput.mood,
+    instrument: musicBrain.context.instrumentSuggestions[0],
+    tempo: resolvedInput.tempo,
+    key: resolvedInput.key,
+    scale: resolvedInput.scale,
+  });
   const { data: request, error: requestError } = await db.from("generation_requests").insert({ user_id: userId, prompt: input.prompt, kind: input.kind, settings: input }).select().single();
   if (requestError) throw requestError;
   const { data: generation, error: generationError } = await db.from("generations").insert({ user_id: userId, request_id: request.id, project_id: input.projectId ?? null, status: "processing" }).select().single();
@@ -80,7 +90,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
       const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
       try {
         const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
-        music = await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}`), controller.signal);
+        music = await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}`), controller.signal);
         break;
       } catch (error) {
         lastError = error;

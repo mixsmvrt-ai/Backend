@@ -28,5 +28,6 @@ describe("PromptAssembler", () => {
     const result = assembler.assemble(input, context);
     expect(result.prompt).toContain("Required JSON schema");
     expect(result.prompt).toContain("melody");
+    expect(result.prompt).toContain("Curated MIDI reference DNA");
   });
 });

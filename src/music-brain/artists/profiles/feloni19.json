@@ -1,0 +1,19 @@
+{
+  "slug": "feloni19",
+  "name": "Feloni19",
+  "aliases": ["feloni19", "feloni 19", "feloni19 type"],
+  "region": "Jamaica",
+  "primary_genres": ["Modern Trap Dancehall", "Dancehall"],
+  "tempo_range": { "min": 95, "max": 108, "default": 100 },
+  "key_preferences": ["F Minor", "G Minor", "A Minor", "D# Minor"],
+  "scale_preferences": ["Natural Minor", "Harmonic Minor", "Minor Pentatonic"],
+  "instrument_preferences": ["Dark Piano", "Emotional Piano", "Spanish Guitar", "Electric Guitar", "Bell Layer", "Ambient Pad"],
+  "melody_density": "Sparse to Medium",
+  "rhythm_style": "Syncopated, bouncy, vocal-friendly",
+  "energy": "Medium High",
+  "mood": ["Dark", "Emotional", "Street", "Melancholic", "Cinematic"],
+  "arrangement_tendencies": ["Minimal intros", "Strong repeating hooks", "Space for vocals", "Atmospheric transitions"],
+  "production_traits": ["Wide 808s", "Layered guitars", "Emotional piano motifs", "Subtle pads", "Rhythmic melodic movement"],
+  "plugin_categories": ["Dark piano instruments", "Emotional guitar libraries", "Ambient pad textures", "808 and sub-bass instruments"],
+  "active": true
+}

@@ -110,6 +110,32 @@ export const INSTRUMENT_HINTS = [
 
 export const ARTIST_PROFILES: ArtistProfile[] = [
   {
+    artistName: "Feloni19",
+    aliases: ["feloni19", "feloni 19", "feloni19 type"],
+    primaryGenre: "Modern Trap Dancehall",
+    secondaryGenre: "Dancehall",
+    knowledgeGenres: ["Dancehall", "Trap", "Afrobeats"],
+    tempoMin: 95,
+    tempoMax: 108,
+    defaultTempo: 100,
+    energyLevel: "Medium High",
+    moodTags: ["Dark", "Emotional", "Street", "Melancholic", "Cinematic"],
+    instrumentTags: ["Dark Piano", "Emotional Piano", "Spanish Guitar", "Electric Guitar", "Bell Layer", "Ambient Pad"],
+    grooveStyle: "Bouncy",
+    melodyStyle: "Sparse to medium, hook-led, vocal-friendly",
+    rhythmStyle: "Syncopated bounce with rhythmic melodic movement",
+    productionStyle: "Wide 808s, layered guitars, emotional piano motifs, subtle pads, and atmospheric transitions",
+    chordStyle: "Minor-key voicings with spacious extensions and smooth movement",
+    description: "Generalized modern Jamaican trap dancehall profile built around dark emotional motifs, repeating hooks, guitar layers, and vocal space.",
+    characteristics: [
+      { type: "groove", value: "Syncopated, bouncy, vocal-friendly pockets", priority: 10 },
+      { type: "melody", value: "Sparse to medium phrases in 2-4 bar hook cycles with high repetition", priority: 9 },
+      { type: "rhythm", value: "Rhythmic melodic movement with deliberate silence and bounce", priority: 8 },
+      { type: "production", value: "Wide 808s, layered guitars, emotional piano, subtle pads, and cinematic transitions", priority: 8 },
+      { type: "originality", value: "Vibe profile only; create completely original MIDI", priority: 1 },
+    ],
+  },
+  {
     artistName: "Skippa",
     aliases: ["skippa", "skippa type"],
     primaryGenre: "Jamaican Trap Dancehall",

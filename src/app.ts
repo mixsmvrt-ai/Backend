@@ -19,9 +19,11 @@ import { aiRouter } from "./routes/ai.routes.js";
 import { songPackRouter } from "./routes/songPack.routes.js";
 import { referralRouter } from "./routes/referral.routes.js";
 import { musicBrainService } from "./services/musicBrainService.js";
+import { referenceLibraryService } from "./services/referenceLibrary/service.js";
 
 export const app = express();
 void musicBrainService.preload();
+void referenceLibraryService.preload();
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ALLOWED_ORIGINS.split(","), credentials: true }));
 app.use(express.json({ limit: "1mb" }));

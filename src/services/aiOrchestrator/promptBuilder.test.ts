@@ -51,6 +51,7 @@ describe("compact planner prompt", () => {
     expect(result.systemPrompt).toContain("vocal space");
     expect(result.systemPrompt).toContain("Humanize");
     expect(result.systemPrompt).toContain("modern harmonic color");
+    expect(result.systemPrompt).toContain("curated MIDI reference DNA");
     expect(result.systemPrompt).toContain("exactly 8 bars");
   });
 

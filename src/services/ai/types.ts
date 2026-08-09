@@ -2,6 +2,7 @@ import { z } from "zod";
 import { orchestrationSchema } from "../../domain/music.js";
 import type { MusicContext } from "../musicBrain/index.js";
 import type { MusicInterpretationRecord } from "../musicInterpretation/index.js";
+import type { ReferenceBlend } from "../referenceLibrary/service.js";
 
 export const aiNoteEventSchema = z.object({
   pitch: z.number().int().min(0).max(127),
@@ -121,6 +122,7 @@ export interface BuiltAiContext {
     plugins: Array<{ category: string; description: string }>;
   }>;
   projectHistory: string[];
+  references?: ReferenceBlend;
   userPreferences: AiGenerateInput["userPreferences"];
 }
 
