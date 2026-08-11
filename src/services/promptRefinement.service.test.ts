@@ -12,6 +12,12 @@ describe("PromptRefinementEngine", () => {
     expect(new Set(result.questions.map((question) => question.id)).size).toBe(result.questions.length);
   });
 
+  it("asks what to build first when the musical part is ambiguous", () => {
+    const result = engine.refine("RajahWild x Shenseea type beat");
+    expect(result.questions[0]?.id).toBe("part");
+    expect(result.questions[0]?.options).toContain("Chords + Melody");
+  });
+
   it("generates immediately when the prompt is complete", () => {
     const result = engine.refine("Kraff trap dancehall Spanish guitar aggressive 100 BPM F minor modern melody");
     expect(result.shouldGenerate).toBe(true);

@@ -6,7 +6,7 @@ export const promptRefinementInputSchema = z.object({
   kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
 });
 
-export type RefinementCategory = "mood" | "instrument" | "tempo" | "energy" | "density" | "complexity" | "include";
+export type RefinementCategory = "part" | "mood" | "instrument" | "tempo" | "energy" | "density" | "complexity" | "include";
 export type RefinementAnswer = z.infer<typeof refinementAnswerSchema>;
 export type RefinementQuestion = { id: RefinementCategory; label: string; prompt: string; options: string[] };
 export type PromptMemory = { genre?: string | null; mood?: string | null; bpm?: number | null; key?: string | null; instrument?: string | null; complexity?: string | null };
@@ -16,7 +16,7 @@ export type PromptRefinementResult = {
   shouldGenerate: boolean;
   intro: string;
   questions: RefinementQuestion[];
-  detected: { genre?: string; subgenre?: string; artist?: string; instrument?: string; mood?: string; tempo?: number; key?: string; complexity?: string };
+  detected: { genre?: string; subgenre?: string; artist?: string; instrument?: string; mood?: string; tempo?: number; key?: string; complexity?: string; part?: string };
 };
 
 const moods = ["Aggressive", "Emotional", "Haunting", "Melancholic", "Cinematic", "Romantic", "Uplifting", "Dark", "Moody", "Atmospheric"];
@@ -40,7 +40,8 @@ function detect(prompt: string, memory: PromptMemory) {
   const tempo = tempoMatch ? Number(tempoMatch[1]) : memory.bpm ?? undefined;
   const key = text.match(/\b([a-g](?:#|b)?)\s*(major|minor|maj|min)\b/i)?.[0] ?? memory.key ?? undefined;
   const detectedComplexity = firstMatch(text, [[/\bsimple|basic|simple chords?\b/, "Simple"], [/\bmodern|rich|colorful\b/, "Modern"], [/\bcinematic|orchestral\b/, "Cinematic"], [/\bemotional chords?\b/, "Emotional"]]) ?? memory.complexity ?? undefined;
-  return { genre, subgenre, artist, instrument, mood, tempo, key, complexity: detectedComplexity };
+  const part = firstMatch(text, [[/\bchords?\s*(?:with|\+|and)\s*melody\b/, "Chords + Melody"], [/\bchords?|harmony|progression/, "Chords"], [/\blead\b/, "Lead"], [/\bmelod(y|ic)\b|\btopline\b/, "Melody"], [/\b808\b/, "808"], [/\bbass(line)?\b/, "Bass"], [/\bdrums?|percussion\b/, "Drums"]]);
+  return { genre, subgenre, artist, instrument, mood, tempo, key, complexity: detectedComplexity, part };
 }
 
 function tempoOptions(genre?: string) {
@@ -51,6 +52,7 @@ function tempoOptions(genre?: string) {
 }
 
 function questionFor(category: RefinementCategory, detected: ReturnType<typeof detect>): RefinementQuestion {
+  if (category === "part") return { id: category, label: "Build first", prompt: "What should I build first?", options: ["Chords", "Chords + Melody", "Melody", "Lead", "Bass", "808", "Drums"] };
   if (category === "instrument") {
     const options = detected.artist ? ["Spanish Guitar", "Dark Piano", "Bell"] : detected.genre === "Afrobeats" ? ["Spanish Guitar", "Soft Piano", "Pluck"] : instruments.slice(0, 4);
     return { id: category, label: "Instrument", prompt: detected.artist ? "Closer to which sound?" : "Which instrument should lead?", options };
@@ -66,11 +68,16 @@ function questionFor(category: RefinementCategory, detected: ReturnType<typeof d
 export class PromptRefinementEngine {
   refine(prompt: string, memory: PromptMemory = {}, kind?: string): PromptRefinementResult {
     const detected = detect(prompt, memory);
-    const fields = [detected.genre, detected.subgenre, detected.instrument, detected.artist, detected.mood, detected.tempo, detected.key, detected.complexity].filter(Boolean).length;
+    if (!detected.part && kind) {
+      const kindPart: Record<string, string> = { chords: "Chords", melody: "Melody", bassline: "Bass", counter_melody: "Lead", drums: "Drums" };
+      detected.part = kindPart[kind];
+    }
+    const fields = [detected.genre, detected.subgenre, detected.instrument, detected.artist, detected.mood, detected.tempo, detected.key, detected.complexity, detected.part].filter(Boolean).length;
     const confidence = Math.min(1, Number((fields / 8).toFixed(2)));
     if (confidence >= 0.88) return { confidence, shouldGenerate: true, intro: "I have the direction. Generating it now.", questions: [], detected };
 
     const missing: RefinementCategory[] = [];
+    if (!detected.part && kind !== "drums") missing.push("part");
     if (!detected.mood) missing.push("mood");
     if (!detected.instrument && kind !== "drums") missing.push("instrument");
     if (!detected.tempo) missing.push("tempo");
