@@ -5,6 +5,7 @@ import type { AuthRequest } from "../middleware/auth.js";
 import { orchestrateGeneration } from "../services/orchestration.service.js";
 import { generateProjectConversationReply } from "../services/projectConversationAi.service.js";
 import { orchestrationSchema } from "../domain/music.js";
+import { promptRefinementEngine, promptRefinementInputSchema, type PromptMemory } from "../services/promptRefinement.service.js";
 
 const projectSchema = z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""), tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]), genre: z.string().max(80).nullable().optional(), bpm: z.number().int().min(40).max(240).nullable().optional(), musicalKey: z.string().max(24).nullable().optional() });
 const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().optional(), archived: z.boolean().optional() });
@@ -21,6 +22,7 @@ const messageSchema = z.object({
 		timeSignature: z.tuple([z.number().int().min(1).max(12), z.number().int().min(1).max(16)]).default([4, 4]),
 	}).optional(),
 });
+const refinementSchema = promptRefinementInputSchema;
 type ProjectConversationRow = {
 	id: string;
 	genre: string | null;
@@ -84,6 +86,31 @@ export async function messages(request: AuthRequest, response: Response) {
 			.order("created_at", { ascending: true });
 		if (error) throw error;
 		response.json({ data });
+	} catch (error) {
+		return failure(response, error);
+	}
+}
+
+export async function refine(request: AuthRequest, response: Response) {
+	const parsed = refinementSchema.safeParse(request.body);
+	if (!parsed.success) return response.status(422).json({ error: "Invalid refinement request", details: parsed.error.flatten() });
+	try {
+		const db = requireSupabase();
+		const { data: project, error: projectError } = await db.from("projects").select("genre, mood, bpm, musical_key").eq("id", request.params.projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
+		if (projectError || !project) return response.status(404).json({ error: "Project not found" });
+		const { data: versions, error: versionsError } = await db.from("project_versions").select("prompt, parameters").eq("project_id", request.params.projectId).eq("user_id", request.user!.id).order("created_at", { ascending: false }).limit(8);
+		if (versionsError) throw versionsError;
+		const remembered = (versions ?? []).map((version) => version.parameters).find((parameters): parameters is Record<string, unknown> => typeof parameters === "object" && parameters !== null) ?? {};
+		const memory: PromptMemory = {
+			genre: project.genre,
+			mood: project.mood,
+			bpm: project.bpm,
+			key: project.musical_key,
+			instrument: typeof remembered.instrument === "string" ? remembered.instrument : typeof remembered.instrumentType === "string" ? remembered.instrumentType : null,
+			complexity: typeof remembered.complexity === "string" ? remembered.complexity : null,
+		};
+		const previousPrompt = versions?.find((version) => typeof version.prompt === "string")?.prompt ?? "";
+		response.json({ data: promptRefinementEngine.refine(`${parsed.data.prompt} ${previousPrompt}`, memory, parsed.data.kind) });
 	} catch (error) {
 		return failure(response, error);
 	}

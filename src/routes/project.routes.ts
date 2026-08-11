@@ -13,4 +13,5 @@ projectRouter.post("/:projectId/duplicate", requireActiveMembership, controller.
 projectRouter.post("/:projectId/archive", requireActiveMembership, controller.update);
 projectRouter.post("/:projectId/favorite", requireActiveMembership, controller.update);
 projectRouter.get("/:projectId/messages", controller.messages);
+projectRouter.post("/:projectId/refine", requireActiveMembership, controller.refine);
 projectRouter.post("/:projectId/messages", requireActiveMembership, controller.createMessage);
