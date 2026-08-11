@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import midiPackage from "@tonejs/midi";
 import { env } from "../../config/env.js";
+import { requireSupabase } from "../../config/supabase.js";
 
 export interface ReferenceFeatures {
   id: string;
@@ -35,6 +36,7 @@ export interface ReferenceFeatures {
   moodTags: string[];
   energyLevel: "low" | "medium" | "high";
   artistInfluenceTags: string[];
+  storagePath?: string;
 }
 
 interface CachedIndex {
@@ -89,7 +91,41 @@ async function midiFiles(root: string): Promise<string[]> {
   }
 }
 
+interface StorageReferenceFile {
+  storagePath: string;
+  modifiedAt: number;
+}
+
+async function storageMidiFiles(prefix = ""): Promise<StorageReferenceFile[]> {
+  const { data, error } = await requireSupabase().storage.from(env.REFERENCE_MIDI_BUCKET).list(prefix, { limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } });
+  if (error) throw error;
+  const files: StorageReferenceFile[] = [];
+  for (const item of data ?? []) {
+    const storagePath = prefix ? `${prefix}/${item.name}` : item.name;
+    if (/\.mid(i)?$/i.test(item.name)) {
+      files.push({ storagePath, modifiedAt: item.updated_at ? Date.parse(item.updated_at) : 0 });
+      continue;
+    }
+    if (!item.metadata) files.push(...await storageMidiFiles(storagePath));
+  }
+  return files;
+}
+
+function storageIsConfigured() {
+  return Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+async function downloadStorageMidi(storagePath: string) {
+  const { data, error } = await requireSupabase().storage.from(env.REFERENCE_MIDI_BUCKET).download(storagePath);
+  if (error || !data) throw error ?? new Error(`Reference MIDI is missing from ${env.REFERENCE_MIDI_BUCKET}/${storagePath}.`);
+  return Buffer.from(await data.arrayBuffer());
+}
+
 function collectionFor(filePath: string, root: string) {
+  if (filePath.startsWith("storage://")) {
+    const storagePath = filePath.split("/").slice(3).join("/");
+    return storagePath?.split("/")[0] || env.REFERENCE_MIDI_BUCKET;
+  }
   const relative = path.relative(root, filePath);
   const [folder] = relative.split(path.sep);
   return folder && path.extname(folder) === "" ? folder : path.basename(root);
@@ -137,9 +173,7 @@ function quantizedDistance(value: number, grid = 0.25) {
   return Math.abs(value - Math.round(value / grid) * grid);
 }
 
-function extractFeatures(filePath: string, root: string, modifiedAt: number): ReferenceFeatures {
-  const fileName = path.basename(filePath);
-  const bytes = readFileSync(filePath);
+function extractFeatures(filePath: string, root: string, modifiedAt: number, bytes = readFileSync(filePath), fileName = path.basename(filePath), storagePath?: string): ReferenceFeatures {
   const midi = new midiPackage.Midi(bytes);
   const notes = midi.tracks.flatMap((track) => track.notes);
   const ppq = midi.header.ppq || 480;
@@ -190,6 +224,7 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number): Re
     moodTags,
     energyLevel: notes.length / Math.max(1, beats) > 3 ? "high" : notes.length / Math.max(1, beats) < 1 ? "low" : "medium",
     artistInfluenceTags: [/@soundwrld/i.test(fileName) ? "Soundwrld" : null, /@helpsisleet/i.test(fileName) ? "helpsisleet" : null, /@dpebeats/i.test(fileName) ? "dpebeats" : null].filter((tag): tag is string => Boolean(tag)),
+    ...(storagePath ? { storagePath } : {}),
   };
 }
 
@@ -213,7 +248,7 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
   const moods = [...new Set(entries.flatMap((entry) => entry.moodTags))];
   return {
     retrieved: await Promise.all(entries.map(async (entry) => {
-      const midi = includeMidi ? await readFile(entry.filePath) : undefined;
+      const midi = includeMidi ? entry.storagePath ? await downloadStorageMidi(entry.storagePath) : await readFile(entry.filePath) : undefined;
       return {
         collection: entry.collection,
         fileName: entry.fileName,
@@ -298,6 +333,7 @@ export class ReferenceLibraryService {
 
   private async buildIndex(): Promise<ReferenceFeatures[]> {
     const roots = sourceRoots();
+    const storageFiles = storageIsConfigured() ? await storageMidiFiles() : [];
     const files = (await Promise.all(roots.map((root) => midiFiles(root)))).flat();
     let cached: CachedIndex | null = null;
     try {
@@ -307,19 +343,34 @@ export class ReferenceLibraryService {
     }
     const cachedByPath = new Map((cached?.version === CACHE_VERSION ? cached.entries : []).map((entry) => [entry.filePath, entry]));
     const entries: ReferenceFeatures[] = [];
-    for (const filePath of files) {
-      const fileStat = await stat(filePath);
-      const previous = cachedByPath.get(filePath);
-      if (previous?.modifiedAt === fileStat.mtimeMs) {
-        entries.push(previous);
-        continue;
+    if (storageFiles.length) {
+      for (const file of storageFiles) {
+        const filePath = `storage://${env.REFERENCE_MIDI_BUCKET}/${file.storagePath}`;
+        const previous = cachedByPath.get(filePath);
+        if (previous?.modifiedAt === file.modifiedAt && previous.storagePath === file.storagePath) {
+          entries.push(previous);
+          continue;
+        }
+        try {
+          const bytes = await downloadStorageMidi(file.storagePath);
+          entries.push(extractFeatures(filePath, env.REFERENCE_MIDI_BUCKET, file.modifiedAt, bytes, path.posix.basename(file.storagePath), file.storagePath));
+        } catch { }
       }
-      try {
-        entries.push(extractFeatures(filePath, roots.find((root) => filePath.startsWith(root)) ?? path.dirname(filePath), fileStat.mtimeMs));
-      } catch { }
+    } else {
+      for (const filePath of files) {
+        const fileStat = await stat(filePath);
+        const previous = cachedByPath.get(filePath);
+        if (previous?.modifiedAt === fileStat.mtimeMs) {
+          entries.push(previous);
+          continue;
+        }
+        try {
+          entries.push(extractFeatures(filePath, roots.find((root) => filePath.startsWith(root)) ?? path.dirname(filePath), fileStat.mtimeMs));
+        } catch { }
+      }
     }
     await mkdir(path.dirname(cachePath()), { recursive: true });
-    await writeFile(cachePath(), JSON.stringify({ version: CACHE_VERSION, sources: roots, entries } satisfies CachedIndex), "utf8");
+    await writeFile(cachePath(), JSON.stringify({ version: CACHE_VERSION, sources: storageFiles.length ? [`supabase://${env.REFERENCE_MIDI_BUCKET}`] : roots, entries } satisfies CachedIndex), "utf8");
     return entries;
   }
 }

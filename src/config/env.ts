@@ -39,6 +39,7 @@ const schema = z.object({
   AUDIO_PROCESS_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
   REFERENCE_MIDI_DIRS: z.string().optional(),
   REFERENCE_MIDI_INDEX_PATH: z.string().min(1).default("./.cache/reference-midi-index.json"),
+  REFERENCE_MIDI_BUCKET: z.string().min(1).default("midi-references"),
   AUDIO_ENABLE_HIGH_PASS_FILTER: z.coerce.boolean().default(true),
   PITCH_DEFAULT_PROVIDER: z.enum(["aubio", "crepe", "essentia"]).default("aubio"),
   PITCH_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.55),
