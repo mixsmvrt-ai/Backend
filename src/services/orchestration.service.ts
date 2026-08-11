@@ -76,6 +76,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     tempo: resolvedInput.tempo,
     key: resolvedInput.key,
     scale: resolvedInput.scale,
+    includeMidi: true,
   });
   const { data: request, error: requestError } = await db.from("generation_requests").insert({ user_id: userId, prompt: input.prompt, kind: input.kind, settings: input }).select().single();
   if (requestError) throw requestError;
@@ -90,7 +91,12 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
       const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
       try {
         const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
-        music = await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}`), controller.signal);
+        const referenceAttachments = referenceBlend.retrieved.map((reference, index) => [
+          `REFERENCE ${index + 1}: ${reference.collection}/${reference.fileName}`,
+          `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; bytes=${reference.byteLength ?? "unknown"}`,
+          `raw_midi_base64: ${reference.midiBase64 ?? "unavailable"}`,
+        ].join("\n")).join("\n\n");
+        music = await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}`), controller.signal);
         break;
       } catch (error) {
         lastError = error;

@@ -52,15 +52,17 @@ interface ReferenceQuery {
   tempo?: number;
   key?: string;
   scale?: string;
+  includeMidi?: boolean;
 }
 
 export interface ReferenceBlend {
-  retrieved: Array<Pick<ReferenceFeatures, "collection" | "fileName" | "tempo" | "key" | "scale"> & { score: number }>;
+  retrieved: Array<Pick<ReferenceFeatures, "collection" | "fileName" | "tempo" | "key" | "scale"> & { score: number; midiBase64?: string; byteLength?: number }>;
   featureSummary: string;
 }
 
 const CACHE_VERSION = 1;
-const MAX_REFERENCES = 8;
+const MIN_REFERENCES = 3;
+const MAX_REFERENCES = 5;
 const DEFAULT_REPOSITORY_ROOT = path.resolve(process.cwd(), "reference-midi");
 const DEFAULT_DESKTOP_ROOT = path.join(os.homedir(), "OneDrive", "Desktop", "Midi References");
 
@@ -199,17 +201,29 @@ function tokenScore(entry: ReferenceFeatures, query: ReferenceQuery) {
   if (query.tempo) score += Math.max(0, 1 - Math.abs(entry.tempo - query.tempo) / 50);
   if (query.key && entry.key?.toLowerCase() === query.key.toLowerCase()) score += 2;
   if (query.scale && entry.scale?.toLowerCase().includes(query.scale.toLowerCase())) score += 1.5;
+  if (entry.phraseLength === 8) score += 0.35;
   return score + Math.random() * 0.15;
 }
 
-function blend(entries: ReferenceFeatures[], scores = new Map<string, number>()): ReferenceBlend {
+async function blend(entries: ReferenceFeatures[], scores = new Map<string, number>(), includeMidi = false): Promise<ReferenceBlend> {
   if (!entries.length) return { retrieved: [], featureSummary: "No MIDI references were available; use the genre profile while preserving hook-first, original composition." };
   const average = (selector: (entry: ReferenceFeatures) => number) => Number((entries.reduce((sum, entry) => sum + selector(entry), 0) / entries.length).toFixed(2));
   const collections = [...new Set(entries.map((entry) => entry.collection))];
   const genres = [...new Set(entries.flatMap((entry) => entry.genreTags))];
   const moods = [...new Set(entries.flatMap((entry) => entry.moodTags))];
   return {
-    retrieved: entries.map((entry) => ({ collection: entry.collection, fileName: entry.fileName, tempo: entry.tempo, key: entry.key, scale: entry.scale, score: Number((scores.get(entry.id) ?? 0).toFixed(3)) })),
+    retrieved: await Promise.all(entries.map(async (entry) => {
+      const midi = includeMidi ? await readFile(entry.filePath) : undefined;
+      return {
+        collection: entry.collection,
+        fileName: entry.fileName,
+        tempo: entry.tempo,
+        key: entry.key,
+        scale: entry.scale,
+        score: Number((scores.get(entry.id) ?? 0).toFixed(3)),
+        ...(midi ? { midiBase64: midi.toString("base64"), byteLength: midi.byteLength } : {}),
+      };
+    })),
     featureSummary: [
       `reference_collections=${collections.join(", ")}`,
       `reference_genres=${genres.join(", ") || "mixed"}`,
@@ -262,16 +276,16 @@ export class ReferenceLibraryService {
       selectedScores.set(entry.id, candidate.score);
       usedCollections.add(entry.collection);
     }
-    if (selected.length < MAX_REFERENCES) {
+    if (selected.length < MIN_REFERENCES) {
       for (const entry of entries) {
-        if (selected.length >= MAX_REFERENCES) break;
+        if (selected.length >= MIN_REFERENCES) break;
         if (!selected.includes(entry)) {
           selected.push(entry);
           selectedScores.set(entry.id, tokenScore(entry, query));
         }
       }
     }
-    return blend(selected, selectedScores);
+    return blend(selected, selectedScores, query.includeMidi ?? false);
   }
 
   private async load() {
