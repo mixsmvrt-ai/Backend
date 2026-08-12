@@ -87,23 +87,33 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     const models = [selection.primaryModel, selection.fallbackModel].filter((model, index, values): model is string => Boolean(model) && values.indexOf(model) === index);
     let music;
     let lastError: unknown;
+    let qualityFeedback = "";
     for (const model of models) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
-      try {
-        const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
-        const referenceAttachments = referenceBlend.retrieved.map((reference, index) => [
-          `REFERENCE ${index + 1}: ${reference.collection}/${reference.fileName}`,
-          `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; bytes=${reference.byteLength ?? "unknown"}`,
-          `raw_midi_base64: ${reference.midiBase64 ?? "unavailable"}`,
-        ].join("\n")).join("\n\n");
-        music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}`), controller.signal), input.lengthBars, input.kind);
-        break;
-      } catch (error) {
-        lastError = error;
-      } finally {
-        clearTimeout(timer);
+      for (let attempt = 0; attempt <= env.AI_QUALITY_RETRIES; attempt += 1) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
+        try {
+          const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
+          const referenceAttachments = referenceBlend.retrieved.map((reference, index) => [
+            `REFERENCE ${index + 1}: ${reference.collection}/${reference.fileName}`,
+            `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; bytes=${reference.byteLength ?? "unknown"}`,
+            `raw_midi_base64: ${reference.midiBase64 ?? "unavailable"}`,
+          ].join("\n")).join("\n\n");
+          const correction = qualityFeedback ? `\n\nPrevious draft failed quality control: ${qualityFeedback}\nRewrite the entire composition and return a complete replacement. Do not shorten the form.` : "";
+          music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
+          break;
+        } catch (error) {
+          lastError = error;
+          if (error instanceof Error && /AI_(NOTE_FORM_INCOMPLETE|STRUCTURE_INCOMPLETE)/.test(String((error as Error & { code?: string }).code ?? ""))) {
+            qualityFeedback = error.message;
+            continue;
+          }
+          break;
+        } finally {
+          clearTimeout(timer);
+        }
       }
+      if (music) break;
     }
     if (!music) throw lastError instanceof Error ? lastError : new Error("AI generation failed.");
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: resolvedInput.genre ?? null, mood: resolvedInput.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;

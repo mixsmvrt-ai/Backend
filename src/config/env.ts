@@ -24,6 +24,7 @@ const schema = z.object({
   AI_FREE_FALLBACK_MODEL: z.string().default("gemini-3.1-flash-lite"),
   AI_PRO_FALLBACK_MODEL: z.string().default("gemini-3.1-flash-lite"),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(45000),
+  AI_QUALITY_RETRIES: z.coerce.number().int().min(0).max(2).default(1),
   AI_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
   AI_CACHE_TTL_SECONDS: z.coerce.number().int().min(60).max(86400).default(900),
   AI_FREE_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000).default(15),
