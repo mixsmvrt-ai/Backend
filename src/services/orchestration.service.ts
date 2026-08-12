@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { OrchestrationInput } from "../domain/music.js";
 import { buildMusicPrompt } from "../ai/prompt-builder.js";
 import { OpenAiCompatibleProvider } from "../ai/provider.js";
+import { validateStructuredMusicQuality } from "./ai/responseValidator.js";
 import { env } from "../config/env.js";
 import { requireSupabase } from "../config/supabase.js";
 import { writeMidi } from "../midi/midi-writer.js";
@@ -96,7 +97,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
           `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; bytes=${reference.byteLength ?? "unknown"}`,
           `raw_midi_base64: ${reference.midiBase64 ?? "unavailable"}`,
         ].join("\n")).join("\n\n");
-        music = await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}`), controller.signal);
+        music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}`), controller.signal), input.lengthBars, input.kind);
         break;
       } catch (error) {
         lastError = error;
