@@ -35,6 +35,15 @@ export const noteSchema = z.object({
   velocity: z.number().int().min(1).max(127),
 });
 
+export const structuredTrackSchema = z.object({
+  role: z.enum(["melody", "guitar", "chords", "bassline", "counter_melody", "drums"]),
+  name: z.string().min(1).max(80),
+  channel: z.number().int().min(0).max(15),
+  program: z.number().int().min(0).max(127),
+  isDrum: z.boolean().default(false),
+  notes: z.array(noteSchema).min(1).max(2048),
+});
+
 export const structuredMusicSchema = z.object({
   tempo: z.number().int().min(40).max(240),
   key: z.string().min(1).max(24),
@@ -51,6 +60,7 @@ export const structuredMusicSchema = z.object({
     moodMatch: z.string().max(80),
     alternative: z.string().max(120),
   })).max(8),
+  tracks: z.array(structuredTrackSchema).max(8).optional(),
 });
 
 export const orchestrationSchema = generationSchema.extend({

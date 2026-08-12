@@ -15,7 +15,7 @@ export const midiOptionsSchema = z.object({
 export type MidiOptionsInput = z.input<typeof midiOptionsSchema>;
 export type MidiOptions = z.infer<typeof midiOptionsSchema>;
 export type LegacyNoteEvent = StructuredMusic["notes"][number];
-export type MidiTrackRole = "melody" | "chords" | "bassline" | "drums" | "counter_melody";
+export type MidiTrackRole = "melody" | "guitar" | "chords" | "bassline" | "drums" | "counter_melody";
 export type MidiExportKind = "single" | "multi" | "package";
 
 export interface MidiNoteEvent {

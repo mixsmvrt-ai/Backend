@@ -56,7 +56,7 @@ export function writeMidi(music: StructuredMusic): Buffer {
     trackName: music.trackName,
     tempo: music.tempo,
     timeSignature: music.timeSignature,
-    tracks: [
+    tracks: music.tracks?.length ? music.tracks : [
       {
         role: "melody",
         name: music.trackName,
@@ -67,7 +67,7 @@ export function writeMidi(music: StructuredMusic): Buffer {
       },
     ],
   };
-  return writeMultiTrackMidi(song, true);
+  return writeMultiTrackMidi(song, !music.tracks?.length);
 }
 
 export function writeMultiTrackMidi(song: MultiTrackMidiSong, mergeToSingleTrack = false): Buffer {
