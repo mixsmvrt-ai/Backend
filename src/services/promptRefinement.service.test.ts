@@ -38,4 +38,10 @@ describe("PromptRefinementEngine", () => {
     expect(result.questions.map((question) => question.id)).not.toContain("instrument");
     expect(result.questions.map((question) => question.id)).not.toContain("tempo");
   });
+
+  it("offers a custom BPM choice when tempo needs to be selected", () => {
+    const result = engine.refine("make a dark dancehall melody");
+    const tempoQuestion = result.questions.find((question) => question.id === "tempo");
+    expect(tempoQuestion?.options).toContain("Custom BPM");
+  });
 });

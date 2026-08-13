@@ -57,7 +57,7 @@ function questionFor(category: RefinementCategory, detected: ReturnType<typeof d
     const options = detected.artist ? ["Spanish Guitar", "Dark Piano", "Bell"] : detected.genre === "Afrobeats" ? ["Spanish Guitar", "Soft Piano", "Pluck"] : instruments.slice(0, 4);
     return { id: category, label: "Instrument", prompt: detected.artist ? "Closer to which sound?" : "Which instrument should lead?", options };
   }
-  if (category === "tempo") return { id: category, label: "Tempo", prompt: "What pocket should it sit in?", options: tempoOptions(detected.genre) };
+  if (category === "tempo") return { id: category, label: "Tempo", prompt: "What pocket should it sit in?", options: [...tempoOptions(detected.genre), "Custom BPM"] };
   if (category === "energy") return { id: category, label: "Energy", prompt: "How should it move?", options: energy.slice(0, 4) };
   if (category === "density") return { id: category, label: "Melody density", prompt: "How much space should I leave?", options: density };
   if (category === "complexity") return { id: category, label: "Chord color", prompt: "How should the harmony feel?", options: complexity };
