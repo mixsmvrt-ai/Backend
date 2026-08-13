@@ -8,6 +8,7 @@ import * as referral from "../controllers/referral.controller.js";
 import * as songPack from "../controllers/songPack.controller.js";
 import { usageTracker } from "../services/ai/usageTracker.js";
 import { loadOrchestratorSettings } from "../services/aiOrchestrator/settings.js";
+import { env } from "../config/env.js";
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireAdmin);
@@ -53,6 +54,7 @@ adminRouter.post("/referrals/payouts/reject", referral.adminRejectPayout);
 adminRouter.post("/referrals/settings", referral.adminSettings);
 adminRouter.get("/ai-orchestrator/overview", async (_request, response, next) => { try { const [overview, settings] = await Promise.all([usageTracker.adminOverview(), loadOrchestratorSettings()]); const estimatedLegacyTokens = overview.dailyRequests * settings.baselineLegacyTokensPerRequest; response.json({ data: { ...overview, estimatedLegacyTokens, estimatedTokenSavings: Math.max(0, estimatedLegacyTokens - overview.totalTokens), settings } }); } catch (error) { next(error); } });
 adminRouter.get("/song-packs/overview", songPack.adminOverview);
+adminRouter.get("/midi-library", async (_request, response, next) => { try { const { data, error } = await requireSupabase().storage.from(env.REFERENCE_MIDI_BUCKET).list("", { limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } }); if (error) throw error; response.json({ data: (data ?? []).map((file) => ({ name: file.name, updated_at: file.updated_at, created_at: file.created_at, metadata: file.metadata, id: file.id })) }); } catch (error) { next(error); } });
 adminRouter.get("/logs/audit", async (_request, response, next) => { try { const { data, error } = await requireSupabase().from("admin_logs").select("*").order("created_at", { ascending: false }).limit(200); if (error) throw error; response.json({ data }); } catch (error) { next(error); } });
 adminRouter.get("/:resource", async (request, response, next) => { try { const name = table(param(request.params.resource)); const { data, error } = await requireSupabase().from(tables[name]).select("*").limit(100); if (error) throw error; response.json({ data }); } catch (error) { next(error); } });
 adminRouter.post("/:resource", async (request: AuthRequest, response, next) => { try { const name = table(param(request.params.resource)); const { data, error } = await requireSupabase().from(tables[name]).insert(request.body).select().single(); if (error) throw error; await auditAdmin(request.user!.id, "created", name, String(data.id ?? data.key), request.body); response.status(201).json({ data }); } catch (error) { next(error); } });
