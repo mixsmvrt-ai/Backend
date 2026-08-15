@@ -83,12 +83,15 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   if (requestError) throw requestError;
   const { data: generation, error: generationError } = await db.from("generations").insert({ user_id: userId, request_id: request.id, project_id: input.projectId ?? null, status: "processing" }).select().single();
   if (generationError) throw generationError;
+  let usedModel: string | null = null;
+  let attemptedModel: string | null = null;
   try {
     const models = [selection.primaryModel, selection.fallbackModel].filter((model, index, values): model is string => Boolean(model) && values.indexOf(model) === index);
     let music;
     let lastError: unknown;
     let qualityFeedback = "";
     for (const model of models) {
+      attemptedModel = model;
       for (let attempt = 0; attempt <= env.AI_QUALITY_RETRIES; attempt += 1) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
@@ -101,6 +104,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
           ].join("\n")).join("\n\n");
           const correction = qualityFeedback ? `\n\nPrevious draft failed quality control: ${qualityFeedback}\nRewrite the entire composition and return a complete replacement. Do not shorten the form.` : "";
           music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
+          usedModel = model;
           break;
         } catch (error) {
           lastError = error;
@@ -124,10 +128,10 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     await recordCreditUsage(userId, creditCost, workflow === "voice_to_midi" ? "voice_to_midi_generation" : "text_to_midi_generation", { generationId: generation.id, workflow, kind: input.kind, projectId: input.projectId ?? null, promptLength: input.prompt.length });
     if (music.pluginRecommendations.length) { const { error: recommendationsError } = await db.from("plugin_recommendations").insert(music.pluginRecommendations.map((recommendation) => ({ generation_id: generation.id, instrument_type: recommendation.instrumentType, preset_type: recommendation.presetType, genre_match: recommendation.genreMatch, mood_match: recommendation.moodMatch, alternative_plugin: recommendation.alternative }))); if (recommendationsError) throw recommendationsError; }
     if (input.projectId) { const { count, error: countError } = await db.from("project_versions").select("id", { count: "exact", head: true }).eq("project_id", input.projectId).eq("user_id", userId); if (countError) throw countError; const { error: versionError } = await db.from("project_versions").insert({ project_id: input.projectId, user_id: userId, version_number: (count ?? 0) + 1, prompt: input.prompt, parameters: input, generation_id: generation.id }); if (versionError) throw versionError; }
-    const { error: finishError } = await db.from("generations").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", generation.id); if (finishError) throw finishError;
+    const { error: finishError } = await db.from("generations").update({ status: "completed", model_used: usedModel, used_fallback: usedModel === selection.fallbackModel, completed_at: new Date().toISOString() }).eq("id", generation.id); if (finishError) throw finishError;
     const { data: signed, error: signError } = await db.storage.from("midi-exports").createSignedUrl(storagePath, 900); if (signError) throw signError;
     if (input.projectId) { const { error: assistantMessageError } = await db.from("project_messages").insert({ project_id: input.projectId, user_id: userId, role: "assistant", content: `${fileName} · ${music.key} · ${music.tempo} BPM`, generation_id: generation.id }); if (assistantMessageError) throw assistantMessageError; }
     return { id: generation.id, status: "completed", prompt: input.prompt, genre: resolvedInput.genre ?? null, key: music.key, tempo: music.tempo, fileName, generationTimeMs: Date.now() - new Date(generation.created_at).getTime(), midiFileUrl: signed.signedUrl, chordProgression: music.chordProgression, structure: music.structure, pluginRecommendations: music.pluginRecommendations };
-  } catch (error) { await db.from("generations").update({ status: "failed", error_message: error instanceof Error ? error.message : "Generation failed" }).eq("id", generation.id); throw error; }
+  } catch (error) { await db.from("generations").update({ status: "failed", model_used: usedModel ?? attemptedModel, used_fallback: (usedModel ?? attemptedModel) === selection.fallbackModel, error_message: error instanceof Error ? error.message : "Generation failed" }).eq("id", generation.id); throw error; }
 }
 export function voiceUploadPath(userId: string, fileName: string) { return `${userId}/${randomUUID()}/${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`; }
