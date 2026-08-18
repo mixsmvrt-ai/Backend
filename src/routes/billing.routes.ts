@@ -10,6 +10,7 @@ billingRouter.get("/trial/status", requireAuth, billing.trialStatus);
 billingRouter.post("/trial/start", requireAuth, billing.startTrial);
 billingRouter.get("/payments", requireAuth, billing.payments);
 billingRouter.get("/billing", requireAuth, billing.payments);
+billingRouter.post("/membership/cancel", requireAuth, billing.cancelMembership);
 billingRouter.post("/paypal/create-order", requireAuth, billing.createPaypalOrder);
 billingRouter.post("/paypal/capture-order/:orderId", requireAuth, billing.capturePaypalOrder);
 billingRouter.post("/renew", requireAuth, billing.createPaypalOrder);

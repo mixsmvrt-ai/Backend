@@ -20,6 +20,8 @@ type ProfileRow = {
 	last_payment_at: string | null;
 	last_payment_date?: string | null;
 	total_payments: number | null;
+	cancel_at_period_end?: boolean | null;
+	cancellation_requested_at?: string | null;
 };
 
 export interface MembershipSnapshot {
@@ -39,6 +41,8 @@ export interface MembershipSnapshot {
 	daysRemaining: number;
 	trialDaysRemaining: number;
 	plan: MembershipPlan;
+	cancelAtPeriodEnd?: boolean;
+	cancellationRequestedAt?: string | null;
 }
 
 const DAY_MS = 86_400_000;
@@ -116,7 +120,7 @@ async function recordMembershipHistory(userId: string, input: { type: Membership
 
 async function ensureProfile(userId: string): Promise<ProfileRow> {
 	const db = requireSupabase();
-	const { data, error } = await db.from("profiles").select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, last_payment_date, total_payments").eq("id", userId).maybeSingle();
+	const { data, error } = await db.from("profiles").select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, last_payment_date, total_payments, cancel_at_period_end, cancellation_requested_at").eq("id", userId).maybeSingle();
 	if (error) throw error;
 
 	if (!data) {
@@ -132,7 +136,7 @@ async function ensureProfile(userId: string): Promise<ProfileRow> {
 			trial_started_at: createdAt.toISOString(),
 			trial_expires_at: trialExpiresAt.toISOString(),
 			total_payments: 0,
-		}).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
+		}).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments, cancel_at_period_end, cancellation_requested_at").single();
 		if (insertError || !inserted) throw insertError ?? new Error("Unable to initialize membership profile.");
 		await recordMembershipHistory(userId, { type: "trial", status: "trial_active", startsAt: createdAt, expiresAt: trialExpiresAt, reason: "bootstrap_trial" });
 		await recordTrialEvent(userId, "started", { trialStartedAt: createdAt.toISOString(), trialExpiresAt: trialExpiresAt.toISOString() });
@@ -166,7 +170,7 @@ async function ensureProfile(userId: string): Promise<ProfileRow> {
 
 	if (Object.keys(updates).length > 0) {
 		updates.updated_at = currentTime().toISOString();
-		const { data: updated, error: updateError } = await db.from("profiles").update(updates).eq("id", userId).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments").single();
+		const { data: updated, error: updateError } = await db.from("profiles").update(updates).eq("id", userId).select("id, created_at, membership_type, plan, membership_status, trial_started_at, trial_expires_at, pro_started_at, access_expires_at, last_payment_at, total_payments, cancel_at_period_end, cancellation_requested_at").single();
 		if (updateError || !updated) throw updateError ?? new Error("Unable to update membership profile.");
 		return updated as ProfileRow;
 	}
@@ -199,6 +203,8 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			daysRemaining: 0,
 			trialDaysRemaining: 0,
 			plan: "plus",
+			cancelAtPeriodEnd: false,
+			cancellationRequestedAt: null,
 		};
 	}
 
@@ -225,6 +231,8 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			daysRemaining: remainingDays(accessExpiresAt),
 			trialDaysRemaining: remainingDays(trialExpiresAt),
 			plan,
+			cancelAtPeriodEnd: Boolean(profile.cancel_at_period_end),
+			cancellationRequestedAt: profile.cancellation_requested_at ?? null,
 		};
 	}
 
@@ -246,6 +254,8 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 			daysRemaining: remainingDays(trialExpiresAt),
 			trialDaysRemaining: remainingDays(trialExpiresAt),
 			plan: "plus",
+			cancelAtPeriodEnd: Boolean(profile.cancel_at_period_end),
+			cancellationRequestedAt: profile.cancellation_requested_at ?? null,
 		};
 	}
 
@@ -266,7 +276,25 @@ function summarize(profile: ProfileRow, role: AppRole): MembershipSnapshot {
 		daysRemaining: 0,
 		trialDaysRemaining: 0,
 		plan,
+		cancelAtPeriodEnd: Boolean(profile.cancel_at_period_end),
+		cancellationRequestedAt: profile.cancellation_requested_at ?? null,
 	};
+}
+
+export async function cancelMembershipAtPeriodEnd(userId: string) {
+	const db = requireSupabase();
+	const membership = await membershipFor(userId);
+	if (!membership.active || membership.isAdmin) {
+		const error = new Error("There is no active plan to cancel.");
+		Object.assign(error, { statusCode: 409, code: "NO_ACTIVE_PLAN" });
+		throw error;
+	}
+	const requestedAt = currentTime().toISOString();
+	const { error } = await db.from("profiles").update({ cancel_at_period_end: true, cancellation_requested_at: requestedAt, updated_at: requestedAt }).eq("id", userId);
+	if (error) throw error;
+	await logActivity(userId, "membership_cancellation_requested", "membership", userId, { access_expires_at: membership.accessExpiresAt ?? membership.trialExpiresAt });
+	await notify(userId, "membership_cancellation_requested", "Plan cancellation scheduled", "Your current access remains active until its end date. No future renewal will be started.");
+	return membershipFor(userId);
 }
 
 async function maybeEmitTrialNotifications(userId: string, snapshot: MembershipSnapshot) {
@@ -364,6 +392,8 @@ export async function grantProAccess(userId: string, paymentId: string | null, r
 		pro_started_at: startsAt.toISOString(),
 		access_expires_at: expiresAt.toISOString(),
 		last_payment_at: currentTime().toISOString(),
+		cancel_at_period_end: false,
+		cancellation_requested_at: null,
 		total_payments: Number(profile.total_payments ?? 0) + 1,
 		updated_at: currentTime().toISOString(),
 	}).eq("id", userId);
