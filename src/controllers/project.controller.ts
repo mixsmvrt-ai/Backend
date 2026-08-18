@@ -16,6 +16,7 @@ const messageSchema = z.object({
 		key: z.string().max(12).optional(),
 		scale: z.string().max(40).optional(),
 		tempo: z.number().int().min(40).max(240).optional(),
+		mood: z.string().trim().max(120).optional(),
 		lengthBars: z.number().int().min(1).max(128).default(8),
 		complexity: z.enum(["low", "medium", "high"]).default("medium"),
 		variationAmount: z.number().min(0).max(1).default(0.5),
@@ -146,7 +147,7 @@ export async function createMessage(request: AuthRequest, response: Response) {
 				variationAmount: parsed.data.generation?.variationAmount ?? 0.5,
 				timeSignature: parsed.data.generation?.timeSignature ?? [4, 4],
 				genre: project.genre ?? undefined,
-				mood: project.mood ?? undefined,
+				mood: parsed.data.generation?.mood ?? project.mood ?? undefined,
 			});
 
 			const generation = await orchestrateGeneration(request.user!.id, generationInput);
