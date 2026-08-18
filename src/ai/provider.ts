@@ -13,6 +13,8 @@ export class OpenAiCompatibleProvider implements MusicAiProvider {
       throw new AiOrchestrationError(error instanceof Error ? error.message : "AI provider request failed.", "AI_PROVIDER_REQUEST_FAILED", 502, true);
     }
     if (!response.ok) {
+      const providerDetail = (await response.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 500);
+      console.error("[ai] provider request failed", { status: response.status, model: this.model, detail: providerDetail || "no response body" });
       const temporary = response.status === 429 || response.status >= 500;
       throw new AiOrchestrationError(
         temporary ? "The music generation service is temporarily unavailable. Please try again." : "The music generation request was rejected.",
