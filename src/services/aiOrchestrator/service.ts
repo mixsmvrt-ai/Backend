@@ -46,7 +46,7 @@ export class CompactAiOrchestratorService {
     }
 
     const primaryModel = settings.defaultModel ?? selection.primaryModel;
-    const fallbackModel = settings.fallbackModel ?? selection.fallbackModel;
+    const fallbackModel = null;
     const request = await usageTracker.createRequest(userId, promptHash, primaryModel, fallbackModel, { ...input, lengthBars: bars, forceRefresh: input.forceRefresh ?? false });
     const models = fallbackService.sequence({ membership: selection.membership, primaryModel, fallbackModel });
     let fallbackUsed = false;

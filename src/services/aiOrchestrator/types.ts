@@ -67,7 +67,6 @@ export interface CompactPlannerResult {
 export type OrchestratorSettings = {
   enabled: boolean;
   defaultModel: string | null;
-  fallbackModel: string | null;
   temperature: number;
   maxOutputTokens: number;
   jsonValidationStrictness: "strict" | "relaxed";

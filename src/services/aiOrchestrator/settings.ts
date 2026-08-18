@@ -6,7 +6,6 @@ function defaults(): OrchestratorSettings {
   return {
     enabled: true,
     defaultModel: null,
-    fallbackModel: null,
     temperature: 0.45,
     maxOutputTokens: 2400,
     jsonValidationStrictness: "strict",
@@ -24,7 +23,6 @@ export async function loadOrchestratorSettings(): Promise<OrchestratorSettings> 
     return {
       enabled: typeof value.enabled === "boolean" ? value.enabled : base.enabled,
       defaultModel: typeof value.defaultModel === "string" ? value.defaultModel : base.defaultModel,
-      fallbackModel: typeof value.fallbackModel === "string" ? value.fallbackModel : base.fallbackModel,
       temperature: typeof value.temperature === "number" ? value.temperature : base.temperature,
       maxOutputTokens: typeof value.maxOutputTokens === "number" ? value.maxOutputTokens : base.maxOutputTokens,
       jsonValidationStrictness: value.jsonValidationStrictness === "relaxed" ? "relaxed" : "strict",
