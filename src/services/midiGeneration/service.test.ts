@@ -73,4 +73,29 @@ describe("MidiGenerationService", () => {
     expect(Math.max(...(chordTrack?.notes.map((note) => note.durationBeats) ?? []))).toBeLessThan(4);
     expect(chordTrack?.notes.some((note) => note.startBeat % 1 !== 0)).toBe(true);
   });
+
+  it.each([
+    ["chords", ["chords"]],
+    ["melody", ["melody"]],
+    ["chords_and_melody", ["melody", "chords"]],
+  ] as const)("exports only the selected layers for %s", (kind, roles) => {
+    const service = new MidiGenerationService();
+    const input: OrchestrationInput = {
+      prompt: kind === "chords" ? "Create chords only" : kind === "melody" ? "Create melody only" : "Create chords and melody only",
+      kind,
+      pluginSuggestions: false,
+      lengthBars: 4,
+      complexity: "medium",
+      variationAmount: 0.5,
+      timeSignature: [4, 4],
+    };
+
+    const result = service.build(input, composition, `generation-${kind}`);
+
+    expect(result.tracks.map((track) => track.role)).toEqual(roles);
+    expect(result.legacyMusic.notes.length).toBeGreaterThan(0);
+    if (kind === "chords_and_melody") {
+      expect(result.legacyMusic.notes.length).toBeGreaterThan(composition.melody.length);
+    }
+  });
 });

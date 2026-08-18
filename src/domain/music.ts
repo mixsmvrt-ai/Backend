@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { midiOptionsSchema } from "../services/midiGeneration/types.js";
 
-export const generationKinds = ["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"] as const;
+export const generationKinds = ["melody", "chords", "chords_and_melody", "counter_melody", "bassline", "drums", "full_composition"] as const;
 
 export const generationSchema = z.object({
   prompt: z.string().trim().min(3).max(1000),

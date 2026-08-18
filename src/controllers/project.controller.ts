@@ -13,7 +13,7 @@ const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().opt
 const messageSchema = z.object({
 	content: z.string().trim().min(1).max(2000),
 	generation: z.object({
-		kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
+		kind: z.enum(["melody", "chords", "chords_and_melody", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
 		key: z.string().max(12).optional(),
 		scale: z.string().max(40).optional(),
 		tempo: z.number().int().min(40).max(240).optional(),
@@ -49,6 +49,7 @@ function looksLikeGenerationRequest(prompt: string) {
 }
 
 function inferGenerationKind(prompt: string) {
+	if (/\b(chord|chords|harmony|progression)\s*(?:with|\+|and)\s*(?:a\s*)?melod\w*/i.test(prompt)) return "chords_and_melody" as const;
 	if (/\b(chord|chords|harmony|progression)\b/i.test(prompt)) return "chords" as const;
 	if (/\b(bass|bassline|808)\b/i.test(prompt)) return "bassline" as const;
 	if (/\b(counter|answer)\b/i.test(prompt)) return "counter_melody" as const;

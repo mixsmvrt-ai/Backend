@@ -3,7 +3,7 @@ import { z } from "zod";
 export const refinementAnswerSchema = z.object({ category: z.string().min(1).max(40), value: z.string().trim().min(1).max(80) });
 export const promptRefinementInputSchema = z.object({
   prompt: z.string().trim().min(3).max(1000),
-  kind: z.enum(["melody", "chords", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
+  kind: z.enum(["melody", "chords", "chords_and_melody", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
 });
 
 export type RefinementCategory = "part" | "mood" | "instrument" | "tempo" | "energy" | "density" | "complexity" | "include";
@@ -69,7 +69,7 @@ export class PromptRefinementEngine {
   refine(prompt: string, memory: PromptMemory = {}, kind?: string): PromptRefinementResult {
     const detected = detect(prompt, memory);
     if (!detected.part && kind) {
-      const kindPart: Record<string, string> = { chords: "Chords", melody: "Melody", bassline: "Bass", counter_melody: "Lead", drums: "Drums" };
+      const kindPart: Record<string, string> = { chords: "Chords", chords_and_melody: "Chords + Melody", melody: "Melody", bassline: "Bass", counter_melody: "Lead", drums: "Drums" };
       detected.part = kindPart[kind];
     }
     const fields = [detected.genre, detected.subgenre, detected.instrument, detected.artist, detected.mood, detected.tempo, detected.key, detected.complexity, detected.part].filter(Boolean).length;

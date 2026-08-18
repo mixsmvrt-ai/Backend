@@ -4,7 +4,7 @@ import type { AiComposition } from "../ai/types.js";
 import { buildZipArchive } from "./archive.js";
 import { buildSections, arrangeNotes } from "./arrangement.js";
 import { humanizeTrack } from "./humanize.js";
-import { midiOptionsSchema, type LegacyNoteEvent, type MidiGenerationBundle, type MidiNoteEvent, type MidiOptions, type MidiTrackDefinition } from "./types.js";
+import { midiOptionsSchema, type LegacyNoteEvent, type MidiGenerationBundle, type MidiNoteEvent, type MidiOptions, type MidiTrackDefinition, type MidiTrackRole } from "./types.js";
 
 const PITCH_CLASS_MAP: Record<string, number> = {
   C: 0,
@@ -224,6 +224,8 @@ function selectLegacyNotes(input: OrchestrationInput, tracks: MidiTrackDefinitio
       return chunkLegacyNotes(counterMelody.length ? counterMelody : melody);
     case "chords":
       return chunkLegacyNotes(chords.length ? chords : melody);
+    case "chords_and_melody":
+      return chunkLegacyNotes([...melody, ...chords].sort((left, right) => left.startBeat - right.startBeat || left.pitch - right.pitch));
     case "drums":
       return chunkLegacyNotes(drums.length ? drums : melody);
     case "full_composition":
@@ -231,6 +233,25 @@ function selectLegacyNotes(input: OrchestrationInput, tracks: MidiTrackDefinitio
     case "melody":
     default:
       return chunkLegacyNotes(melody);
+  }
+}
+
+function selectedTrackRoles(kind: OrchestrationInput["kind"]): MidiTrackRole[] {
+  switch (kind) {
+    case "chords":
+      return ["chords"];
+    case "chords_and_melody":
+      return ["chords", "melody"];
+    case "melody":
+      return ["melody"];
+    case "bassline":
+      return ["bassline"];
+    case "counter_melody":
+      return ["counter_melody"];
+    case "drums":
+      return ["drums"];
+    default:
+      return ["melody", "chords", "bassline", "counter_melody", "drums"];
   }
 }
 
@@ -270,6 +291,8 @@ export class MidiGenerationService {
       timingVariationBeats: track.isDrum ? Math.min(options.timingVariationBeats, 0.015) : options.timingVariationBeats,
       quantizeStrength: track.isDrum ? Math.max(options.quantizeStrength, 0.8) : options.quantizeStrength,
     }, seed + (index * 97)));
+    const selectedRoles = new Set(selectedTrackRoles(input.kind));
+    const selectedTracks = baseTracks.filter((track) => selectedRoles.has(track.role));
 
     const legacyMusic: StructuredMusic = {
       tempo: composition.tempo,
@@ -297,7 +320,7 @@ export class MidiGenerationService {
         trackName: composition.trackName,
         tempo: composition.tempo,
         timeSignature: composition.timeSignature,
-        tracks: baseTracks,
+        tracks: selectedTracks,
       }),
     };
     const packageExport = {
@@ -317,7 +340,7 @@ export class MidiGenerationService {
 
     return {
       legacyMusic,
-      tracks: baseTracks,
+      tracks: selectedTracks,
       sections,
       exports,
     };
