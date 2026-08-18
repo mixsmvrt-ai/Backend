@@ -66,7 +66,7 @@ export const structuredMusicSchema = z.object({
 export const orchestrationSchema = generationSchema.extend({
   projectId: z.string().uuid().optional(),
   workflow: z.enum(["text_to_midi", "song_pack", "voice_to_midi"]).optional(),
-  lengthBars: z.number().int().min(1).max(128).default(16),
+  lengthBars: z.number().int().min(1).max(128).default(8),
   complexity: z.enum(["low", "medium", "high"]).default("medium"),
   variationAmount: z.number().min(0).max(1).default(0.5),
   randomSeed: z.number().int().min(0).max(2147483647).optional(),

@@ -110,6 +110,7 @@ export class ContextBuilder {
       key: musicBrain.context.key,
       scale: musicBrain.context.scale,
       artist: artist.translatedGenre,
+      includeMidi: true,
     });
     return {
       prompt: contextualPrompt,

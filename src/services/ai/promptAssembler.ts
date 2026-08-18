@@ -72,6 +72,11 @@ export class PromptAssembler {
       "Curated MIDI reference DNA:",
       context.references?.featureSummary ?? "Reference index unavailable; keep the composition original and producer-level.",
       "",
+      "Reference event templates:",
+      context.references?.retrieved.length
+        ? context.references.retrieved.map((reference, index) => `REFERENCE ${index + 1} (${index === 0 ? "PRIMARY" : "SECONDARY"}, influence=${reference.influence}): ${reference.collection}/${reference.fileName}; events=${JSON.stringify(reference.midiEvents)}`).join("\n")
+        : "No event-level MIDI references available.",
+      "",
       "Artist Inspiration context:",
       `Genre=${context.artist.translatedGenre}; groove=${context.artist.grooveStyle}; melody=${context.artist.melodyStyle}; production=${context.artist.productionStyle}; instruments=${context.artist.translatedInstruments.join(", ")}; moods=${context.artist.translatedMood.join(", ")}; originality=${context.artist.originalityNotice}`,
       "",
@@ -106,7 +111,7 @@ export class PromptAssembler {
       "",
       "Output constraints:",
       "- Keep the result original and production-ready.",
-      "- Treat the curated MIDI reference DNA as the primary quality anchor while composing entirely new notes, rhythms, motifs, and progressions.",
+      "- Treat the primary curated MIDI event template as the compositional foundation. Preserve its density, rests, pocket, phrase behavior, register, duration distribution, velocity behavior, and role, then apply controlled changes without adding unnecessary notes.",
       "- Respect the interpreted groove, phrasing, harmonic direction, and emotional color.",
       "- Melody, bassline, and counter melody must use MIDI note numbers and beat positions only.",
       "- Chord progression must include roman numerals and harmonic function labels.",

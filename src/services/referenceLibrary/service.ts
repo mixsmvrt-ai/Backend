@@ -59,8 +59,25 @@ interface ReferenceQuery {
 }
 
 export interface ReferenceBlend {
-  retrieved: Array<Pick<ReferenceFeatures, "collection" | "fileName" | "tempo" | "key" | "scale"> & { score: number; midiBase64?: string; byteLength?: number }>;
+  retrieved: Array<Pick<ReferenceFeatures, "collection" | "fileName" | "tempo" | "key" | "scale"> & {
+    score: number;
+    influence: number;
+    midiEvents: ReferenceMidiEvent[];
+    byteLength?: number;
+  }>;
   featureSummary: string;
+}
+
+export interface ReferenceMidiEvent {
+   pitch: number;
+   startBeat: number;
+   durationBeats: number;
+   velocity: number;
+   track: string;
+   bar: number;
+   beatPosition: number;
+   phrasePosition: number;
+   role: string;
 }
 
 const CACHE_VERSION = 1;
@@ -229,6 +246,43 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number, byt
   };
 }
 
+function round(value: number, places = 3) {
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
+}
+
+function roleForTrack(trackName: string, fileName: string) {
+  const text = `${trackName} ${fileName}`.toLowerCase();
+  if (/drum|kick|snare|hat|rim|perc/.test(text)) return "drums";
+  if (/bass|808/.test(text)) return "bassline";
+  if (/chord|harmon|pad|guitar/.test(text)) return "harmony";
+  if (/counter|response/.test(text)) return "counter_melody";
+  return "melody";
+}
+
+function extractMidiEvents(bytes: Buffer, fileName: string, timeSignature: [number, number]): ReferenceMidiEvent[] {
+  const midi = new midiPackage.Midi(bytes);
+  const ppq = midi.header.ppq || 480;
+  const beatsPerBar = timeSignature[0];
+  const maxTick = Math.max(1, ...midi.tracks.flatMap((track) => track.notes.map((note) => note.ticks + note.durationTicks)));
+  const phraseBars = Math.max(1, Math.round(maxTick / ppq / beatsPerBar));
+  return midi.tracks.flatMap((track, trackIndex) => track.notes.map((note) => {
+    const startBeat = note.ticks / ppq;
+    const bar = Math.floor(startBeat / beatsPerBar) + 1;
+    return {
+      pitch: note.midi,
+      startBeat: round(startBeat),
+      durationBeats: round(note.durationTicks / ppq),
+      velocity: Math.max(1, Math.min(127, Math.round(note.velocity * 127))),
+      track: track.name || `track-${trackIndex + 1}`,
+      bar,
+      beatPosition: round(startBeat % beatsPerBar),
+      phrasePosition: Math.floor((bar - 1) / phraseBars) + 1,
+      role: roleForTrack(track.name || `track-${trackIndex + 1}`, fileName),
+    };
+  })).sort((left, right) => left.startBeat - right.startBeat || left.pitch - right.pitch).slice(0, 2048);
+}
+
 function tokenScore(entry: ReferenceFeatures, query: ReferenceQuery) {
   const text = `${query.prompt} ${query.genre ?? ""} ${query.mood ?? ""} ${query.instrument ?? ""} ${query.artist ?? ""} ${query.key ?? ""} ${query.scale ?? ""}`.toLowerCase();
   const tokens = text.split(/[^a-z0-9#&]+/).filter((token) => token.length > 2);
@@ -251,7 +305,7 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
   const genres = [...new Set(entries.flatMap((entry) => entry.genreTags))];
   const moods = [...new Set(entries.flatMap((entry) => entry.moodTags))];
   return {
-    retrieved: await Promise.all(entries.map(async (entry) => {
+    retrieved: await Promise.all(entries.map(async (entry, index) => {
       const midi = includeMidi ? entry.storagePath ? await downloadStorageMidi(entry.storagePath) : await readFile(entry.filePath) : undefined;
       return {
         collection: entry.collection,
@@ -260,7 +314,9 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
         key: entry.key,
         scale: entry.scale,
         score: Number((scores.get(entry.id) ?? 0).toFixed(3)),
-        ...(midi ? { midiBase64: midi.toString("base64"), byteLength: midi.byteLength } : {}),
+        influence: index === 0 ? 0.7 : index === 1 ? 0.2 : 0.1,
+        midiEvents: midi ? extractMidiEvents(midi, entry.fileName, entry.timeSignature) : [],
+        ...(midi ? { byteLength: midi.byteLength } : {}),
       };
     })),
     featureSummary: [
@@ -289,7 +345,7 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
       `ornamentation=${[...new Set(entries.flatMap((entry) => entry.ornamentation))].join(", ")}`,
       `artist_influence_tags=${[...new Set(entries.flatMap((entry) => entry.artistInfluenceTags))].join(", ") || "none"}`,
       `reference_profiles=${entries.map((entry) => `${entry.collection}/${entry.fileName}: tempo=${entry.tempo}; register=${entry.register}; pitch_range=${entry.pitchRange.min}-${entry.pitchRange.max}; note_density=${entry.noteDensity}; rhythmic_density=${entry.rhythmicDensity}; swing=${entry.swingAmount}; syncopation=${entry.syncopationLevel}; phrase_length=${entry.phraseLength}; repetition=${entry.repetitionLevel}; motif=${entry.motifStructure}; intervals=${entry.intervalTendencies.join(",")}; voicing=${entry.chordVoicingStyle}; extensions=${entry.chordExtensions.join(",")}; velocity=${entry.velocityProfile}; timing=${entry.humanizationProfile}; ornamentation=${entry.ornamentation.join(",")}`).join(" || ")}`,
-      "Use these as producer-DNA feature constraints only. Never copy note sequences, rhythms, motifs, hooks, or progressions.",
+      "The first reference is the primary compositional template. Preserve its event-level structure, space, pocket, density, phrase behavior, and instrument role while changing selected musical content through controlled mutation. Secondary references contribute only the listed blend influence.",
     ].join("; "),
   };
 }
