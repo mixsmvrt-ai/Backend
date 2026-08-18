@@ -104,7 +104,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
             `raw_midi_base64: ${reference.midiBase64 ?? "unavailable"}`,
           ].join("\n")).join("\n\n");
           const correction = qualityFeedback ? `\n\nPrevious draft failed quality control: ${qualityFeedback}\nRewrite the entire composition and return a complete replacement. Do not shorten the form.` : "";
-          music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference DNA: ${referenceBlend.featureSummary}\n\nAttached actual MIDI references (decode and study them; do not copy them):\n${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
+          music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference feature profiles: ${referenceBlend.featureSummary}\n\nUse the retrieved reference profiles as the primary groove and arrangement template. Match their pocket, note density, phrase length, register, syncopation, motif repetition, voicing behavior, and human feel before adding only subtle artist/genre flavor. Create new notes, rhythms, motifs, hooks, and progressions; do not copy any source material.${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
           usedModel = model;
           break;
         } catch (error) {

@@ -288,6 +288,7 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
       `humanization=${[...new Set(entries.map((entry) => entry.humanizationProfile))].join("; ")}`,
       `ornamentation=${[...new Set(entries.flatMap((entry) => entry.ornamentation))].join(", ")}`,
       `artist_influence_tags=${[...new Set(entries.flatMap((entry) => entry.artistInfluenceTags))].join(", ") || "none"}`,
+      `reference_profiles=${entries.map((entry) => `${entry.collection}/${entry.fileName}: tempo=${entry.tempo}; register=${entry.register}; pitch_range=${entry.pitchRange.min}-${entry.pitchRange.max}; note_density=${entry.noteDensity}; rhythmic_density=${entry.rhythmicDensity}; swing=${entry.swingAmount}; syncopation=${entry.syncopationLevel}; phrase_length=${entry.phraseLength}; repetition=${entry.repetitionLevel}; motif=${entry.motifStructure}; intervals=${entry.intervalTendencies.join(",")}; voicing=${entry.chordVoicingStyle}; extensions=${entry.chordExtensions.join(",")}; velocity=${entry.velocityProfile}; timing=${entry.humanizationProfile}; ornamentation=${entry.ornamentation.join(",")}`).join(" || ")}`,
       "Use these as producer-DNA feature constraints only. Never copy note sequences, rhythms, motifs, hooks, or progressions.",
     ].join("; "),
   };
