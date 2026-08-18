@@ -20,7 +20,7 @@ const schema = z.object({
   AI_PROVIDER_API_KEY: z.string().optional(),
   AI_PROVIDER_MODEL: z.string().optional(),
   AI_FREE_MODEL: z.string().default("gemini-3.5-flash-lite"),
-  AI_PRO_MODEL: z.string().default("gemini-3.7-flash"),
+  AI_PRO_MODEL: z.string().default("gemini-3.5-flash"),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120000).default(60000),
   AI_QUALITY_RETRIES: z.coerce.number().int().min(0).max(2).default(1),
   AI_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
