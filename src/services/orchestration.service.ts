@@ -113,6 +113,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
             qualityFeedback = error.message;
             continue;
           }
+          if (error instanceof Error && (error as { retryable?: boolean }).retryable && attempt < env.AI_QUALITY_RETRIES) continue;
           break;
         } finally {
           clearTimeout(timer);
