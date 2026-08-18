@@ -6,6 +6,7 @@ import { orchestrateGeneration } from "../services/orchestration.service.js";
 import { generateProjectConversationReply } from "../services/projectConversationAi.service.js";
 import { orchestrationSchema } from "../domain/music.js";
 import { promptRefinementEngine, promptRefinementInputSchema, type PromptMemory } from "../services/promptRefinement.service.js";
+import { AiOrchestrationError } from "../services/ai/types.js";
 
 const projectSchema = z.object({ title: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""), tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]), genre: z.string().max(80).nullable().optional(), bpm: z.number().int().min(40).max(240).nullable().optional(), musicalKey: z.string().max(24).nullable().optional() });
 const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().optional(), archived: z.boolean().optional() });
@@ -38,6 +39,7 @@ function failure(response: Response, error: unknown) {
 	});
 	const statusCode = typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
 	const isExpected = statusCode >= 400 && statusCode < 500;
+	if (error instanceof AiOrchestrationError) return response.status(error.statusCode).json({ error: error.message, code: error.code, retryable: error.retryable });
 	return response.status(statusCode).json({ error: isExpected && error instanceof Error ? error.message : "Server error. Please try again in a few minutes." });
 }
 
