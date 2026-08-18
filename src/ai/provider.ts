@@ -12,7 +12,15 @@ export class OpenAiCompatibleProvider implements MusicAiProvider {
       if (error instanceof Error && error.name === "AbortError") throw new AiOrchestrationError("MIDI generation timed out. Please try again.", "AI_TIMEOUT", 504, true);
       throw new AiOrchestrationError(error instanceof Error ? error.message : "AI provider request failed.", "AI_PROVIDER_REQUEST_FAILED", 502, true);
     }
-    if (!response.ok) throw new Error(`AI provider request failed with ${response.status}.`);
+    if (!response.ok) {
+      const temporary = response.status === 429 || response.status >= 500;
+      throw new AiOrchestrationError(
+        temporary ? "The music generation service is temporarily unavailable. Please try again." : "The music generation request was rejected.",
+        temporary ? "AI_PROVIDER_TEMPORARY_FAILURE" : "AI_PROVIDER_REJECTED",
+        temporary ? (response.status === 429 ? 429 : 503) : 422,
+        temporary,
+      );
+    }
     const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
     const content = payload.choices?.[0]?.message?.content;
     if (!content) throw new Error("AI provider returned no structured composition.");
