@@ -78,6 +78,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     key: resolvedInput.key,
     scale: resolvedInput.scale,
     includeMidi: true,
+    referencePackWeights: musicBrain.context.jamaicanKnowledge?.referenceFeatures.reduce<Record<string, number>>((weights, reference) => ({ ...weights, [reference.pack]: reference.weight }), {}),
   });
   const { data: request, error: requestError } = await db.from("generation_requests").insert({ user_id: userId, prompt: input.prompt, kind: input.kind, settings: input }).select().single();
   if (requestError) throw requestError;

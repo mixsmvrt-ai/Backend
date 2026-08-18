@@ -62,7 +62,7 @@ function questionFor(category: RefinementCategory, detected: ReturnType<typeof d
   if (category === "density") return { id: category, label: "Melody density", prompt: "How much space should I leave?", options: density };
   if (category === "complexity") return { id: category, label: "Chord color", prompt: "How should the harmony feel?", options: complexity };
   if (category === "include") return { id: category, label: "Include", prompt: "What should the pack include?", options: ["Melody + Chords", "Melody + Chords + Bass", "Full Pack"] };
-  return { id: "mood", label: "Mood", prompt: "What emotional direction should I lock in?", options: moods.slice(0, 5) };
+  return { id: "mood", label: "Mood", prompt: "What emotional direction should I lock in?", options: [...moods.slice(0, 5), "Custom Mood"] };
 }
 
 export class PromptRefinementEngine {

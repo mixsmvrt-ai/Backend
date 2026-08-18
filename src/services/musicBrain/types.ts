@@ -5,6 +5,7 @@ export type SupportedMood =
   | "Melancholy" | "Energetic" | "Calm" | "Emotional" | "Hopeful" | "Mysterious";
 
 export type EnergyLevel = "Low" | "Medium" | "High";
+import type { JamaicanGenerationContext } from "./jamaicanKnowledge.js";
 export type ComplexityLevel = "Simple" | "Medium" | "Advanced" | "Expert";
 export type HumanizationLevel = "Low" | "Medium" | "High";
 export type GenerationType = "Melody" | "Chord Progression" | "Bassline" | "Counter Melody" | "Drums" | "Arpeggio" | "Full Composition" | "Variation" | "Continuation";
@@ -129,6 +130,7 @@ export interface MusicContext {
   difficulty: DifficultyLevel;
   daw?: string;
   pluginPreference?: string;
+  jamaicanKnowledge?: JamaicanGenerationContext;
 }
 
 export interface MusicBrainInput {

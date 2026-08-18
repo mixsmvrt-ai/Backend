@@ -44,4 +44,10 @@ describe("PromptRefinementEngine", () => {
     const tempoQuestion = result.questions.find((question) => question.id === "tempo");
     expect(tempoQuestion?.options).toContain("Custom BPM");
   });
+
+  it("offers custom mood input alongside preset moods", () => {
+    const result = engine.refine("make a dancehall melody");
+    const moodQuestion = result.questions.find((question) => question.id === "mood");
+    expect(moodQuestion?.options).toContain("Custom Mood");
+  });
 });

@@ -55,6 +55,7 @@ interface ReferenceQuery {
   key?: string;
   scale?: string;
   includeMidi?: boolean;
+  referencePackWeights?: Record<string, number>;
 }
 
 export interface ReferenceBlend {
@@ -237,6 +238,9 @@ function tokenScore(entry: ReferenceFeatures, query: ReferenceQuery) {
   if (query.key && entry.key?.toLowerCase() === query.key.toLowerCase()) score += 2;
   if (query.scale && entry.scale?.toLowerCase().includes(query.scale.toLowerCase())) score += 1.5;
   if (entry.phraseLength === 8) score += 0.35;
+  for (const [pack, weight] of Object.entries(query.referencePackWeights ?? {})) {
+    if (entry.collection.toLowerCase().includes(pack.toLowerCase()) || entry.fileName.toLowerCase().includes(pack.toLowerCase())) score += weight * 2;
+  }
   return score + Math.random() * 0.15;
 }
 

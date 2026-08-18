@@ -10,6 +10,7 @@ import { inferComplexity, inferDifficulty, inferHumanization } from "./complexit
 import { inferSongLength, inferTimeSignature } from "./structure.js";
 import type { MusicContext } from "./types.js";
 import { musicBrainArtistCatalog } from "./artists.js";
+import { buildJamaicanGenerationContext } from "./jamaicanKnowledge.js";
 
 function selectArtistGenreHint(artistBlend: Awaited<ReturnType<typeof musicBrainArtistCatalog.resolvePrompt>>) {
   if (!artistBlend?.primaryGenres.length) return undefined;
@@ -25,7 +26,8 @@ export class MusicBrainAnalyzer {
   async analyze(input: MusicBrainInput): Promise<Omit<MusicContext, "enhancedPrompt">> {
     const prompt = validatePrompt(input.prompt);
     const artistBlend = await musicBrainArtistCatalog.resolvePrompt(prompt);
-    const genreHint = input.genre ?? selectArtistGenreHint(artistBlend);
+    const jamaicanKnowledge = buildJamaicanGenerationContext(prompt, { mood: input.mood, tempo: input.tempo, instrument: input.prompt.match(/spanish|nylon|guitar|piano|keys|bell|808|bass|pluck|pad/i)?.[0] });
+    const genreHint = input.genre ?? selectArtistGenreHint(artistBlend) ?? jamaicanKnowledge.genreProfile?.genreName;
     const analysisPrompt = artistBlend
       ? `${prompt}. Artist vibe characteristics: ${artistBlend.primaryGenres.join(", ")}; ${artistBlend.instrumentPreferences.join(", ")}; ${artistBlend.mood.join(", ")}; ${artistBlend.rhythmStyle}.`
       : prompt;
@@ -67,6 +69,7 @@ export class MusicBrainAnalyzer {
       originalityNotice: mergeOriginalityNotice(input.originalityNotice),
       difficulty: inferDifficulty(complexity, input.difficulty),
       daw: input.targetDaw,
+      jamaicanKnowledge,
     };
   }
 }
