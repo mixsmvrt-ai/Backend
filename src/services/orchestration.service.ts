@@ -19,14 +19,21 @@ function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined
   return TEXT_TO_MIDI_CREDIT_COST;
 }
 
-function midiFileNameFromTrackName(trackName: string) {
-  const cleaned = trackName
+export function titleFromGenerationRequest(prompt: string) {
+  const cleaned = prompt
     .trim()
+    .replace(/^(please\s+)?(create|generate|make|write|compose|produce|give me)\s+(a\s+|an\s+|the\s+)?/i, "")
+    .split(/[.!?\n]/)[0]
     .replace(/[^a-zA-Z0-9\s_-]+/g, "")
     .replace(/\s+/g, " ")
-    .slice(0, 64);
-  const fallback = cleaned || "midiflow-idea";
-  return `${fallback}.mid`;
+    .trim()
+    .slice(0, 64)
+    .trim();
+  return cleaned || "MidiFlow Idea";
+}
+
+function midiFileNameFromRequest(prompt: string) {
+  return `${titleFromGenerationRequest(prompt)}.mid`;
 }
 
 export async function orchestrateGeneration(userId: string, input: OrchestrationInput) {
@@ -123,7 +130,9 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     }
     if (!music) throw lastError instanceof Error ? lastError : new Error("AI generation failed.");
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: resolvedInput.genre ?? null, mood: resolvedInput.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;
-    const file = writeMidi(music); const fileName = midiFileNameFromTrackName(music.trackName); const storagePath = `${userId}/${generation.id}/${fileName}`;
+    const requestTitle = titleFromGenerationRequest(input.prompt);
+    const namedMusic = { ...music, trackName: requestTitle };
+    const file = writeMidi(namedMusic); const fileName = midiFileNameFromRequest(input.prompt); const storagePath = `${userId}/${generation.id}/${fileName}`;
     const { error: storageError } = await db.storage.from("midi-exports").upload(storagePath, file, { contentType: "audio/midi", upsert: false }); if (storageError) throw storageError;
     const { error: fileError } = await db.from("generation_files").insert({ generation_id: generation.id, user_id: userId, storage_path: storagePath, file_name: fileName, mime_type: "audio/midi", file_size_bytes: file.length }); if (fileError) throw fileError;
     await midiAnalysisService.persistAnalysis(file, { generationId: generation.id, projectId: input.projectId ?? null, userId, fileName, genre: input.genre ?? null, mood: input.mood ?? null });
