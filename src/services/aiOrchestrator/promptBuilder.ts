@@ -1,5 +1,6 @@
 import type { BuiltAiContext } from "../ai/types.js";
 import type { PlannerWorkflow } from "./types.js";
+import { formatReferenceContext } from "../referenceLibrary/service.js";
 
 type CompactPromptOptions = {
   workflow: PlannerWorkflow;
@@ -40,6 +41,9 @@ export function buildCompactPlannerPrompt(context: BuiltAiContext, options: Comp
     "Use the compact schema keys: tempo, time_signature, key, scale, bars, tracks, summary.",
     "Each note must use p,s,d,v only.",
     "Return only the requested tracks.",
+    "The PRIMARY curated MIDI reference event list is the compositional foundation. Preserve its density, rests, pocket, phrase behavior, register, durations, velocity contour, and musical role before applying controlled changes.",
+    "Secondary references are supporting evidence only; use their feature summaries and bounded event samples for variation, never concatenate references.",
+    "Do not add notes simply to make the result more complex. If the primary reference is sparse, remain sparse.",
     "Create original, producer-level MIDI that is memorable, intentional, emotionally compelling, groove-driven, and immediately usable in a commercial beat.",
     "Build a strong hook with a repeating motif that develops through rhythm, ending notes, register, intervals, or tasteful ornamentation.",
     "Use 2-bar and 4-bar phrasing, call-and-response, question-and-answer, and deliberate repetition with variation; avoid continuous note spam and random scale runs.",
@@ -62,6 +66,9 @@ export function buildCompactPlannerPrompt(context: BuiltAiContext, options: Comp
     context.musicBrain.context.tempoAdvisory ? `tempo_note=${context.musicBrain.context.tempoAdvisory.message}` : "",
     `artist=${context.artist.translatedGenre};groove=${context.artist.grooveStyle};melody=${context.artist.melodyStyle};production=${context.artist.productionStyle}`,
     `reference_dna=${context.references?.featureSummary ?? "unavailable"}`,
+    context.references?.retrieved.length
+      ? `reference_event_templates:\n${formatReferenceContext(context.references.retrieved)}`
+      : "reference_event_templates=unavailable",
     `knowledge=${summarizeKnowledge(context)}`,
     `interpretation=${interpretationHint(context)}`,
     context.projectHistory.length ? `project_history=${context.projectHistory.slice(-4).join(" || ")}` : "",

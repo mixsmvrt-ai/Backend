@@ -68,6 +68,8 @@ export interface ReferenceBlend {
   featureSummary: string;
 }
 
+export type RetrievedReference = ReferenceBlend["retrieved"][number];
+
 export interface ReferenceMidiEvent {
    pitch: number;
    startBeat: number;
@@ -84,11 +86,12 @@ const CACHE_VERSION = 1;
 const MIN_REFERENCES = 3;
 const MAX_REFERENCES = 5;
 const DEFAULT_REPOSITORY_ROOT = path.resolve(process.cwd(), "reference-midi");
+const DEFAULT_ASSET_ROOT = path.resolve(process.cwd(), "reference-assets");
 const DEFAULT_DESKTOP_ROOT = path.join(os.homedir(), "OneDrive", "Desktop", "Midi References");
 
 function sourceRoots() {
   const configured = env.REFERENCE_MIDI_DIRS?.split(",").map((value) => value.trim()).filter(Boolean);
-  return configured?.length ? configured.map((value) => path.resolve(value)) : [DEFAULT_REPOSITORY_ROOT, DEFAULT_DESKTOP_ROOT];
+  return configured?.length ? configured.map((value) => path.resolve(value)) : [DEFAULT_REPOSITORY_ROOT, DEFAULT_ASSET_ROOT, DEFAULT_DESKTOP_ROOT];
 }
 
 function cachePath() {
@@ -171,7 +174,7 @@ function collectionTags(collection: string, fileName: string) {
     /trap|808/.test(text) ? "Trap" : null,
     /drill/.test(text) ? "Drill" : null,
     /rnb|r&b/.test(text) ? "R&B" : null,
-    /guitar|spanish/.test(text) ? "Guitar" : null,
+    /guitar|spanish|flamenco|nylon/.test(text) ? "Guitar" : null,
   ].filter((tag): tag is string => Boolean(tag));
   const moodTags = [
     /dark|guilt|hurt|pain|dead|bloody|apocalypse|emotional/.test(text) ? "Dark" : null,
@@ -237,7 +240,7 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number, byt
     velocityProfile: notes.length ? `range ${Math.round(Math.min(...notes.map((note) => note.velocity)) * 127)}-${Math.round(Math.max(...notes.map((note) => note.velocity)) * 127)}` : "moderate dynamics",
     humanizationProfile: offGrid > notes.length * 0.05 ? "played timing with loose attacks" : "tight pocket with subtle variation",
     ornamentation: shortNotes / Math.max(1, notes.length) > 0.35 ? ["short passing notes", "pickup accents"] : ["selective passing tones"],
-    instrumentCategory: /guitar/.test(lower) ? "guitar" : /808|bass/.test(lower) ? "bass/808" : /piano|keys/.test(lower) ? "piano/keys" : /chord/.test(lower) ? "chords" : "melodic MIDI",
+    instrumentCategory: instrumentCategoryFor(lower),
     genreTags,
     moodTags,
     energyLevel: notes.length / Math.max(1, beats) > 3 ? "high" : notes.length / Math.max(1, beats) < 1 ? "low" : "medium",
@@ -249,6 +252,18 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number, byt
 function round(value: number, places = 3) {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
+}
+
+function instrumentCategoryFor(text: string) {
+  if (/spanish|flamenco|nylon|guitar/.test(text)) return "spanish guitar";
+  if (/808|bass/.test(text)) return "bass/808";
+  if (/piano|keys/.test(text)) return "piano/keys";
+  if (/bell|mallet/.test(text)) return "bells/mallets";
+  if (/pluck|plucked/.test(text)) return "plucks";
+  if (/pad|string|brass|synth|lead/.test(text)) return "synth/ensemble";
+  if (/drum|kick|snare|hat|rim|perc/.test(text)) return "drums/percussion";
+  if (/chord|harmon/.test(text)) return "chords";
+  return "melodic MIDI";
 }
 
 function roleForTrack(trackName: string, fileName: string) {
@@ -295,7 +310,39 @@ function tokenScore(entry: ReferenceFeatures, query: ReferenceQuery) {
   for (const [pack, weight] of Object.entries(query.referencePackWeights ?? {})) {
     if (entry.collection.toLowerCase().includes(pack.toLowerCase()) || entry.fileName.toLowerCase().includes(pack.toLowerCase())) score += weight * 2;
   }
-  return score + Math.random() * 0.15;
+  return score;
+}
+
+export function rankReferenceEntries(entries: ReferenceFeatures[], query: ReferenceQuery) {
+  return entries
+    .map((entry) => ({ entry, score: tokenScore(entry, query) }))
+    .sort((left, right) => right.score - left.score || left.entry.filePath.localeCompare(right.entry.filePath));
+}
+
+export function formatReferenceContext(references: RetrievedReference[], secondaryEventLimit = 64) {
+  return references.map((reference, index) => {
+    const eventLimit = index === 0 ? reference.midiEvents.length : Math.min(reference.midiEvents.length, secondaryEventLimit);
+    const events = reference.midiEvents.slice(0, eventLimit);
+    return [
+      `REFERENCE ${index + 1} (${index === 0 ? "PRIMARY" : "SECONDARY"}): ${reference.collection}/${reference.fileName}`,
+      `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; influence=${reference.influence}; bytes=${reference.byteLength ?? "unknown"}; event_count=${reference.midiEvents.length}`,
+      `note_events_json${index === 0 ? "" : `_sample_first_${eventLimit}`}: ${JSON.stringify(events)}`,
+    ].join("\n");
+  }).join("\n\n");
+}
+
+export function diagnoseReferenceContext(references: RetrievedReference[]) {
+  const context = formatReferenceContext(references);
+  return {
+    references: references.map((reference) => ({
+      fileName: reference.fileName,
+      byteLength: reference.byteLength ?? null,
+      eventCount: reference.midiEvents.length,
+    })),
+    serializedBytes: Buffer.byteLength(context, "utf8"),
+    modelReceivesReferenceData: references.length > 0 && context.includes("note_events_json"),
+    context,
+  };
 }
 
 async function blend(entries: ReferenceFeatures[], scores = new Map<string, number>(), includeMidi = false): Promise<ReferenceBlend> {
@@ -360,7 +407,7 @@ export class ReferenceLibraryService {
 
   async retrieve(query: ReferenceQuery): Promise<ReferenceBlend> {
     const entries = await this.load();
-    const ranked = entries.map((entry) => ({ entry, score: tokenScore(entry, query) })).sort((left, right) => right.score - left.score);
+    const ranked = rankReferenceEntries(entries, query);
     const selected: ReferenceFeatures[] = [];
     const selectedScores = new Map<string, number>();
     const usedCollections = new Set<string>();

@@ -12,7 +12,7 @@ import { midiAnalysisService } from "./midiAnalysisService.js";
 import { modelSelector } from "./ai/modelSelector.js";
 import { assertPlusMembership } from "./membership.service.js";
 import { musicBrainService } from "./musicBrain/index.js";
-import { referenceLibraryService } from "./referenceLibrary/service.js";
+import { formatReferenceContext, referenceLibraryService } from "./referenceLibrary/service.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -105,12 +105,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
         const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
         try {
           const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
-          const referenceAttachments = referenceBlend.retrieved.map((reference, index) => [
-            `REFERENCE ${index + 1} (${index === 0 ? "PRIMARY" : "SECONDARY"}): ${reference.collection}/${reference.fileName}`,
-            `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; bytes=${reference.byteLength ?? "unknown"}`,
-            `conceptual_influence: ${reference.influence}`,
-            `note_events_json: ${JSON.stringify(reference.midiEvents)}`,
-          ].join("\n")).join("\n\n");
+          const referenceAttachments = formatReferenceContext(referenceBlend.retrieved);
           const correction = qualityFeedback ? `\n\nPrevious draft failed quality control: ${qualityFeedback}\nRewrite the entire composition and return a complete replacement. Do not shorten the form.` : "";
           music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference feature profiles: ${referenceBlend.featureSummary}\n\nREFERENCE-FIRST RULE: use the PRIMARY reference event list as the compositional foundation. Reconstruct its note density, rests, pocket, phrase length, motif repetition, duration distribution, velocity contour, register, and role before applying controlled changes requested by the user. Preserve approximately 95% of its construction quality, but mutate selected pitches, phrase endings, voicings, octaves, durations, and motif responses so the result is new. Do not add notes to increase complexity; if the reference is sparse, remain sparse. Keep the requested musical role. ${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
           usedModel = model;
