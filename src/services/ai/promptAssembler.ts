@@ -110,7 +110,7 @@ export class PromptAssembler {
       "- Respect the interpreted groove, phrasing, harmonic direction, and emotional color.",
       "- Melody, bassline, and counter melody must use MIDI note numbers and beat positions only.",
       "- Chord progression must include roman numerals and harmonic function labels.",
-      "- When the user asks for groove, bounce, syncopation, dancehall, afro, off-beat, or rhythmic movement, write chord harmony as playable rhythmic stabs, off-beat attacks, passing color, and varied note lengths; do not default to one full-bar sustained triad.",
+      "- When the user explicitly asks for stabs, chops, off-beat attacks, or percussive chord hits, write them as playable rhythmic accents with varied voicings and note lengths. Otherwise, do not create hard repeated mid-register stab rows: prefer melodic movement, softer voicings, passing color, rests, and varied phrase endings.",
       "- Reserve fully sustained chord stacks for explicit pad, ambient, drone, simple, or sustained requests.",
       "- Plugin categories must stay generic and non-proprietary.",
     ].join("\n");
