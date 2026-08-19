@@ -14,6 +14,7 @@ import { assertPlusMembership } from "./membership.service.js";
 import { musicBrainService } from "./musicBrain/index.js";
 import { formatReferenceContext, referenceLibraryService } from "./referenceLibrary/service.js";
 import { AiOrchestrationError } from "./ai/types.js";
+import { applyReferenceQualityGate } from "./referenceQuality.service.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -133,6 +134,9 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
       if (music) break;
     }
     if (!music) throw lastError instanceof Error ? lastError : new Error("AI generation failed.");
+    const qualityGate = applyReferenceQualityGate(music, referenceBlend.retrieved[0], resolvedInput);
+    music = qualityGate.music;
+    console.info("[ai] reference quality gate", { simplified: qualityGate.simplified, beforeNotes: qualityGate.before.noteCount, afterNotes: qualityGate.after.noteCount, referenceEvents: referenceBlend.retrieved[0]?.midiEvents.length ?? 0 });
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: resolvedInput.genre ?? null, mood: resolvedInput.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;
     const requestTitle = titleFromGenerationRequest(input.prompt);
     const namedMusic = { ...music, trackName: requestTitle };

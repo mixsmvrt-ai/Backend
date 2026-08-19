@@ -20,6 +20,9 @@ export interface ReferenceFeatures {
   register: "low" | "mid" | "high" | "wide";
   noteDensity: number;
   rhythmicDensity: number;
+  restRatio: number;
+  durationDistribution: string;
+  velocityVariation: number;
   swingAmount: number;
   syncopationLevel: number;
   phraseLength: number;
@@ -28,6 +31,7 @@ export interface ReferenceFeatures {
   chordVoicingStyle: string;
   chordExtensions: string[];
   repetitionLevel: number;
+  complexity: number;
   velocityProfile: string;
   humanizationProfile: string;
   ornamentation: string[];
@@ -40,7 +44,7 @@ export interface ReferenceFeatures {
 }
 
 interface CachedIndex {
-  version: 1;
+  version: 2;
   sources: string[];
   entries: ReferenceFeatures[];
 }
@@ -63,6 +67,7 @@ export interface ReferenceBlend {
     score: number;
     influence: number;
     midiEvents: ReferenceMidiEvent[];
+    profile: Pick<ReferenceFeatures, "noteDensity" | "rhythmicDensity" | "restRatio" | "durationDistribution" | "velocityVariation" | "pitchRange" | "register" | "phraseLength" | "repetitionLevel" | "complexity" | "syncopationLevel" | "chordVoicingStyle">;
     byteLength?: number;
   }>;
   featureSummary: string;
@@ -82,7 +87,7 @@ export interface ReferenceMidiEvent {
    role: string;
 }
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const MIN_REFERENCES = 3;
 const MAX_REFERENCES = 5;
 const DEFAULT_REPOSITORY_ROOT = path.resolve(process.cwd(), "reference-midi");
@@ -229,6 +234,9 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number, byt
     register: registerFor(pitchRange),
     noteDensity: Number((notes.length / Math.max(1, beats)).toFixed(3)),
     rhythmicDensity: Number((uniqueStarts.length / Math.max(1, beats)).toFixed(3)),
+    restRatio: Number(Math.max(0, 1 - (notes.reduce((sum, note) => sum + (note.durationTicks / ppq), 0) / Math.max(1, beats))).toFixed(3)),
+    durationDistribution: notes.length ? `${Math.round(Math.min(...notes.map((note) => note.durationTicks / ppq)) * 1000) / 1000}-${Math.round(Math.max(...notes.map((note) => note.durationTicks / ppq)) * 1000) / 1000} beats` : "none",
+    velocityVariation: Number((notes.length ? Math.sqrt(notes.reduce((sum, note) => sum + ((note.velocity - (notes.reduce((inner, current) => inner + current.velocity, 0) / notes.length)) ** 2), 0) / notes.length) : 0).toFixed(3)),
     swingAmount: Number((offGrid / Math.max(1, notes.length)).toFixed(3)),
     syncopationLevel: Number((notes.filter((note) => (note.ticks / ppq) % 1 > 0.01).length / Math.max(1, notes.length)).toFixed(3)),
     phraseLength: Math.max(1, Math.round(beats / Math.max(1, time[0] ?? 4))),
@@ -237,6 +245,7 @@ function extractFeatures(filePath: string, root: string, modifiedAt: number, byt
     chordVoicingStyle: notes.length > 0 && pitchRange.max - pitchRange.min > 24 ? "open and spread voicings" : "compact voicings",
     chordExtensions,
     repetitionLevel: Number((repeatedPitches / Math.max(1, notes.length)).toFixed(3)),
+    complexity: Number(Math.min(1, ((new Set(notes.map((note) => note.midi)).size / 24) * 0.4) + ((uniqueStarts.length / Math.max(1, notes.length)) * 0.3) + ((1 - (repeatedPitches / Math.max(1, notes.length))) * 0.3)).toFixed(3)),
     velocityProfile: notes.length ? `range ${Math.round(Math.min(...notes.map((note) => note.velocity)) * 127)}-${Math.round(Math.max(...notes.map((note) => note.velocity)) * 127)}` : "moderate dynamics",
     humanizationProfile: offGrid > notes.length * 0.05 ? "played timing with loose attacks" : "tight pocket with subtle variation",
     ornamentation: shortNotes / Math.max(1, notes.length) > 0.35 ? ["short passing notes", "pickup accents"] : ["selective passing tones"],
@@ -326,6 +335,7 @@ export function formatReferenceContext(references: RetrievedReference[], primary
     return [
       `REFERENCE ${index + 1} (${index === 0 ? "PRIMARY" : "SECONDARY"}): ${reference.collection}/${reference.fileName}`,
       `metadata: tempo=${reference.tempo}; key=${reference.key ?? "unspecified"}; scale=${reference.scale ?? "unspecified"}; score=${reference.score}; influence=${reference.influence}; bytes=${reference.byteLength ?? "unknown"}; event_count=${reference.midiEvents.length}`,
+      `profile: ${JSON.stringify(reference.profile)}`,
       `note_events_json${index === 0 ? "" : `_sample_first_${eventLimit}`}: ${JSON.stringify(events)}`,
     ].join("\n");
   }).join("\n\n");
@@ -363,6 +373,20 @@ async function blend(entries: ReferenceFeatures[], scores = new Map<string, numb
         score: Number((scores.get(entry.id) ?? 0).toFixed(3)),
         influence: index === 0 ? 0.7 : index === 1 ? 0.2 : 0.1,
         midiEvents: midi ? extractMidiEvents(midi, entry.fileName, entry.timeSignature) : [],
+        profile: {
+          noteDensity: entry.noteDensity,
+          rhythmicDensity: entry.rhythmicDensity,
+          restRatio: entry.restRatio,
+          durationDistribution: entry.durationDistribution,
+          velocityVariation: entry.velocityVariation,
+          pitchRange: entry.pitchRange,
+          register: entry.register,
+          phraseLength: entry.phraseLength,
+          repetitionLevel: entry.repetitionLevel,
+          complexity: entry.complexity,
+          syncopationLevel: entry.syncopationLevel,
+          chordVoicingStyle: entry.chordVoicingStyle,
+        },
         ...(midi ? { byteLength: midi.byteLength } : {}),
       };
     })),
