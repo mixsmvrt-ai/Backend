@@ -13,6 +13,7 @@ import { modelSelector } from "./ai/modelSelector.js";
 import { assertPlusMembership } from "./membership.service.js";
 import { musicBrainService } from "./musicBrain/index.js";
 import { formatReferenceContext, referenceLibraryService } from "./referenceLibrary/service.js";
+import { AiOrchestrationError } from "./ai/types.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -34,6 +35,12 @@ export function titleFromGenerationRequest(prompt: string) {
 
 function midiFileNameFromRequest(prompt: string) {
   return `${titleFromGenerationRequest(prompt)}.mid`;
+}
+
+export function shouldRetryGenerationAttempt(error: unknown, attempt: number, maxRetries: number) {
+  if (attempt >= maxRetries) return false;
+  if (error instanceof AiOrchestrationError && error.code === "AI_TIMEOUT") return false;
+  return error instanceof Error && (error as Error & { retryable?: boolean }).retryable === true;
 }
 
 export async function orchestrateGeneration(userId: string, input: OrchestrationInput) {
@@ -116,7 +123,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
             qualityFeedback = error.message;
             continue;
           }
-          if (error instanceof Error && (error as { retryable?: boolean }).retryable && attempt < env.AI_QUALITY_RETRIES) continue;
+          if (shouldRetryGenerationAttempt(error, attempt, env.AI_QUALITY_RETRIES)) continue;
           break;
         } finally {
           clearTimeout(timer);

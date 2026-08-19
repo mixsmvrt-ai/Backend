@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { titleFromGenerationRequest } from "./orchestration.service.js";
+import { AiOrchestrationError } from "./ai/types.js";
+import { shouldRetryGenerationAttempt, titleFromGenerationRequest } from "./orchestration.service.js";
 
 describe("generation request titles", () => {
   it("uses the user's request instead of a model-invented title", () => {
@@ -11,5 +12,20 @@ describe("generation request titles", () => {
     expect(title).toMatch(/^emotional Jamaican guitar melody/);
     expect(title.length).toBeLessThanOrEqual(64);
     expect(title).not.toMatch(/[.!?]/);
+  });
+});
+
+describe("generation retry policy", () => {
+  it("does not retry provider timeouts", () => {
+    const timeout = new AiOrchestrationError("MIDI generation timed out.", "AI_TIMEOUT", 504, true);
+
+    expect(shouldRetryGenerationAttempt(timeout, 0, 1)).toBe(false);
+  });
+
+  it("still retries retryable non-timeout failures", () => {
+    const transient = new AiOrchestrationError("Temporary provider failure.", "AI_PROVIDER_TEMPORARY_FAILURE", 503, true);
+
+    expect(shouldRetryGenerationAttempt(transient, 0, 1)).toBe(true);
+    expect(shouldRetryGenerationAttempt(transient, 1, 1)).toBe(false);
   });
 });
