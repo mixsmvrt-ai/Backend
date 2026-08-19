@@ -35,9 +35,14 @@ export class OpenAiCompatibleProvider implements MusicAiProvider {
     if (!content) throw new AiOrchestrationError("AI provider returned no structured composition.", "AI_EMPTY_RESPONSE", 502, true);
     try {
       const { value } = jsonValidator.parse(content);
-      return structuredMusicSchema.parse(value);
+      const parsed = structuredMusicSchema.safeParse(value);
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        throw new Error(`schema: ${issue?.path.join(".") || "root"} ${issue?.message || "invalid response"}`);
+      }
+      return parsed.data;
     } catch (error) {
-      console.error("[ai] invalid structured composition", { model: this.model, responseBytes: Buffer.byteLength(content, "utf8"), finishReason: payload.choices?.[0]?.finish_reason ?? "unknown", error: error instanceof Error ? error.message : "invalid response" });
+      console.error("[ai] invalid structured composition", { model: this.model, responseBytes: Buffer.byteLength(content, "utf8"), finishReason: payload.choices?.[0]?.finish_reason ?? "unknown", responsePreview: JSON.stringify(content.slice(0, 80)), error: error instanceof Error ? error.message : "invalid response" });
       throw new AiOrchestrationError("The music model returned an invalid composition. Please try again.", "AI_INVALID_RESPONSE", 502, true);
     }
   }
