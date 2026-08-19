@@ -116,6 +116,9 @@ export const DEFAULT_INSTRUMENTS_BY_GENRE: Record<SupportedGenre, string[]> = {
 };
 
 export const INSTRUMENT_KEYWORDS: Record<string, string[]> = {
+  "Spanish Guitar": ["spanish guitar", "nylon guitar", "flamenco guitar", "classical guitar", "flamenco", "nylon"],
+  "Acoustic Guitar": ["acoustic guitar", "steel string guitar"],
+  "Electric Guitar": ["electric guitar", "clean guitar", "guitar riff"],
   Bell: ["bell", "bells", "glockenspiel", "music box"],
   Piano: ["piano", "keys"],
   Pad: ["pad", "pads", "atmosphere"],

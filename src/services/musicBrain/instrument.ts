@@ -1,5 +1,6 @@
 import { DEFAULT_INSTRUMENTS_BY_GENRE, INSTRUMENT_KEYWORDS } from "./constants.js";
 import type { PluginRecommendation, SupportedGenre, SupportedMood } from "./types.js";
+import { resolveInstrumentProfile } from "../instrumentProfiles.js";
 
 export function detectInstruments(prompt: string, genre: SupportedGenre, preferredInstruments: string[] = []) {
   const text = prompt.toLowerCase();
@@ -8,7 +9,8 @@ export function detectInstruments(prompt: string, genre: SupportedGenre, preferr
     .map(([instrument]) => instrument);
 
   const merged = [...detected, ...(preferredInstruments.length ? preferredInstruments : DEFAULT_INSTRUMENTS_BY_GENRE[genre] ?? [])];
-  return [...new Set(merged)].slice(0, 4);
+  const specific = merged.filter((instrument) => instrument !== "Guitar");
+  return [...new Set([...specific, ...merged.filter((instrument) => instrument === "Guitar")])].slice(0, 4);
 }
 
 export function recommendedPlugins(instruments: string[], genre: SupportedGenre, mood: SupportedMood): PluginRecommendation[] {
@@ -24,6 +26,9 @@ export function recommendedPlugins(instruments: string[], genre: SupportedGenre,
 function presetFor(instrument: string, mood: SupportedMood) {
   if (instrument === "808") return mood === "Dark" ? "dark 808 / sub bass" : "clean 808 / sub bass";
   if (/piano|rhodes/i.test(instrument)) return mood === "Sad" || mood === "Emotional" ? "felt or soft piano" : "warm or bright piano";
+  if (/spanish|nylon|flamenco|classical/i.test(instrument)) return "nylon-string Spanish guitar / flamenco guitar";
+  if (/acoustic/i.test(instrument)) return "steel-string acoustic guitar";
+  if (/electric/i.test(instrument)) return "clean or muted electric guitar";
   if (/guitar/i.test(instrument)) return mood === "Dark" ? "clean electric guitar" : "ambient or melodic guitar";
   if (/bell|choir|strings/i.test(instrument)) return mood === "Dark" ? "dark ambient layer" : "cinematic layer";
   if (/pad|synth/i.test(instrument)) return mood === "Dreamy" ? "ambient pad" : "supporting synth texture";

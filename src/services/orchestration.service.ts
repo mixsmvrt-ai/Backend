@@ -15,6 +15,7 @@ import { musicBrainService } from "./musicBrain/index.js";
 import { formatReferenceContext, referenceLibraryService } from "./referenceLibrary/service.js";
 import { AiOrchestrationError } from "./ai/types.js";
 import { applyReferenceQualityGate } from "./referenceQuality.service.js";
+import { constrainNotesToInstrument } from "./instrumentProfiles.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -134,6 +135,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
       if (music) break;
     }
     if (!music) throw lastError instanceof Error ? lastError : new Error("AI generation failed.");
+    music = { ...music, notes: constrainNotesToInstrument(music.notes, musicBrain.context.instrumentSuggestions[0], resolvedInput.prompt) };
     const qualityGate = applyReferenceQualityGate(music, referenceBlend.retrieved[0], resolvedInput);
     music = qualityGate.music;
     console.info("[ai] reference quality gate", { simplified: qualityGate.simplified, beforeNotes: qualityGate.before.noteCount, afterNotes: qualityGate.after.noteCount, referenceEvents: referenceBlend.retrieved[0]?.midiEvents.length ?? 0 });

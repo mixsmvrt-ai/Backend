@@ -1,5 +1,6 @@
 import type { StructuredMusic } from "../domain/music.js";
 import type { MultiTrackMidiSong, MidiTrackDefinition } from "../services/midiGeneration/types.js";
+import { instrumentProfile } from "../services/instrumentProfiles.js";
 
 const text = (value: string) => Buffer.concat([Buffer.from([value.length]), Buffer.from(value, "utf8")]);
 const vlq = (value: number) => { const bytes = [value & 0x7f]; while ((value >>= 7)) bytes.unshift((value & 0x7f) | 0x80); return Buffer.from(bytes); };
@@ -52,6 +53,7 @@ function noteTrack(track: MidiTrackDefinition) {
 }
 
 export function writeMidi(music: StructuredMusic): Buffer {
+  const profile = instrumentProfile(music.trackName);
   const song: MultiTrackMidiSong = {
     trackName: music.trackName,
     tempo: music.tempo,
@@ -61,7 +63,7 @@ export function writeMidi(music: StructuredMusic): Buffer {
         role: "melody",
         name: music.trackName,
         channel: 0,
-        program: 81,
+        program: profile.midiProgram,
         isDrum: false,
         notes: music.notes,
       },

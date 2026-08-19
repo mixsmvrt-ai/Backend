@@ -1,5 +1,6 @@
 import { recommendationKnowledgeService } from "../musicKnowledge/index.js";
 import type { MusicContext } from "./types.js";
+import { instrumentProfilePrompt } from "../instrumentProfiles.js";
 
 export class MusicBrainEnricher {
   async enrich(context: Omit<MusicContext, "enhancedPrompt">): Promise<MusicContext> {
@@ -33,6 +34,7 @@ export class MusicBrainEnricher {
       genreProfile?.commonIntervals.length ? `Common interval language: ${genreProfile.commonIntervals.join(", ")}.` : "",
       genreProfile?.typicalNoteLengths.length ? `Typical note lengths: ${genreProfile.typicalNoteLengths.join(", ")}.` : "",
       `Recommended instruments: ${instruments.join(", ")}.`,
+      instrumentProfilePrompt(instruments[0], context.prompt),
       chordProgressions.length ? `Recommended harmonic vocabulary: ${chordProgressions.join(", ")}.` : "",
       scales.length ? `Compatible scales: ${scales.join(", ")}.` : "",
       plugins.length ? `Production categories: ${plugins.join(", ")}.` : "",
