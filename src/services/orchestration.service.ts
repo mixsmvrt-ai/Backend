@@ -113,13 +113,13 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
         try {
           const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
           const referenceAttachments = formatReferenceContext(referenceBlend.retrieved);
-          const correction = qualityFeedback ? `\n\nPrevious draft failed quality control: ${qualityFeedback}\nRewrite the entire composition and return a complete replacement. Do not shorten the form.` : "";
+          const correction = qualityFeedback ? `\n\nPrevious attempt failed validation: ${qualityFeedback}\nReturn one complete replacement JSON object only. Do not include markdown, prose, truncated strings, or explanatory text. Keep arrays concise enough to finish the complete response within the output limit.` : "";
           music = validateStructuredMusicQuality(await provider.compose(buildMusicPrompt(resolvedInput, `${musicBrain.providerPrompt}\n${referencePrompt}\nCurated MIDI reference feature profiles: ${referenceBlend.featureSummary}\n\nREFERENCE-FIRST RULE: use the PRIMARY reference event list as the compositional foundation. Reconstruct its note density, rests, pocket, phrase length, motif repetition, duration distribution, velocity contour, register, and role before applying controlled changes requested by the user. Preserve approximately 95% of its construction quality, but mutate selected pitches, phrase endings, voicings, octaves, durations, and motif responses so the result is new. Do not add notes to increase complexity; if the reference is sparse, remain sparse. Keep the requested musical role. ${referenceAttachments}${correction}`), controller.signal), input.lengthBars, input.kind);
           usedModel = model;
           break;
         } catch (error) {
           lastError = error;
-          if (error instanceof Error && /AI_(NOTE_FORM_INCOMPLETE|STRUCTURE_INCOMPLETE)/.test(String((error as Error & { code?: string }).code ?? ""))) {
+          if (error instanceof Error && /AI_(NOTE_FORM_INCOMPLETE|STRUCTURE_INCOMPLETE|INVALID_RESPONSE)/.test(String((error as Error & { code?: string }).code ?? ""))) {
             qualityFeedback = error.message;
             continue;
           }
