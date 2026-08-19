@@ -16,6 +16,7 @@ describe("generation request titles", () => {
 
   it("creates a professional instrument-role-tonality title", () => {
     expect(midiTitleFromGenerationRequest("I want Spanish guitar melody", "melody", { key: "A", scale: "Minor", tempo: 98 })).toBe("Spanish Guitar Melody A Minor - 98 BPM");
+    expect(midiTitleFromGenerationRequest("Create a Spanish guitar loop", "full_composition", { key: "C", scale: "Major", tempo: 101 })).toBe("Spanish Guitar C Major - 101 BPM");
   });
 });
 

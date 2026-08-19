@@ -56,10 +56,10 @@ export function midiTitleFromGenerationRequest(prompt: string, kind: Orchestrati
               : /pads?|atmosphere/.test(text)
                 ? "Pad"
                 : null;
-  const role = kind === "chords_and_melody" ? "Chords + Melody" : kind === "full_composition" ? "Full Composition" : titleCase(kind.replace(/_/g, " "));
+  const role = kind === "full_composition" ? "" : kind === "chords_and_melody" ? "Chords + Melody" : titleCase(kind.replace(/_/g, " "));
   const tonic = music.key.replace(/\s+(major|minor|maj|min)$/i, "").trim();
   const tonality = `${tonic} ${titleCase(music.scale)}`.trim();
-  return `${instrument ? `${instrument} ` : ""}${role} ${tonality} - ${music.tempo} BPM`.replace(/\s+/g, " ").trim();
+  return `${instrument ? `${instrument} ` : ""}${role ? `${role} ` : ""}${tonality} - ${music.tempo} BPM`.replace(/\s+/g, " ").trim();
 }
 
 function midiFileNameFromRequest(prompt: string, kind: OrchestrationInput["kind"], music: { key: string; scale: string; tempo: number }) {
@@ -183,7 +183,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     if (input.projectId) { const { count, error: countError } = await db.from("project_versions").select("id", { count: "exact", head: true }).eq("project_id", input.projectId).eq("user_id", userId); if (countError) throw countError; const { error: versionError } = await db.from("project_versions").insert({ project_id: input.projectId, user_id: userId, version_number: (count ?? 0) + 1, prompt: input.prompt, parameters: input, generation_id: generation.id }); if (versionError) throw versionError; }
     const { error: finishError } = await db.from("generations").update({ status: "completed", model_used: usedModel, used_fallback: usedModel === selection.fallbackModel, completed_at: new Date().toISOString() }).eq("id", generation.id); if (finishError) throw finishError;
     const { data: signed, error: signError } = await db.storage.from("midi-exports").createSignedUrl(storagePath, 900); if (signError) throw signError;
-    if (input.projectId) { const { error: assistantMessageError } = await db.from("project_messages").insert({ project_id: input.projectId, user_id: userId, role: "assistant", content: `${fileName} · ${music.key} · ${music.tempo} BPM`, generation_id: generation.id }); if (assistantMessageError) throw assistantMessageError; }
+    if (input.projectId) { const { error: assistantMessageError } = await db.from("project_messages").insert({ project_id: input.projectId, user_id: userId, role: "assistant", content: fileName, generation_id: generation.id }); if (assistantMessageError) throw assistantMessageError; }
     return { id: generation.id, status: "completed", prompt: input.prompt, genre: resolvedInput.genre ?? null, key: music.key, tempo: music.tempo, fileName, generationTimeMs: Date.now() - new Date(generation.created_at).getTime(), midiFileUrl: signed.signedUrl, chordProgression: music.chordProgression, structure: music.structure, pluginRecommendations: music.pluginRecommendations };
   } catch (error) { await db.from("generations").update({ status: "failed", model_used: usedModel ?? attemptedModel, used_fallback: (usedModel ?? attemptedModel) === selection.fallbackModel, error_message: error instanceof Error ? error.message : "Generation failed" }).eq("id", generation.id); throw error; }
 }
