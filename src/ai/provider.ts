@@ -1,6 +1,7 @@
 import { structuredMusicSchema, type StructuredMusic } from "../domain/music.js";
 import { AiOrchestrationError } from "../services/ai/types.js";
 import { env } from "../config/env.js";
+import { jsonValidator } from "../services/ai/jsonValidator.js";
 
 export interface MusicAiProvider { compose(prompt: string, signal: AbortSignal): Promise<StructuredMusic>; }
 export class OpenAiCompatibleProvider implements MusicAiProvider {
@@ -33,9 +34,10 @@ export class OpenAiCompatibleProvider implements MusicAiProvider {
     const content = payload.choices?.[0]?.message?.content;
     if (!content) throw new AiOrchestrationError("AI provider returned no structured composition.", "AI_EMPTY_RESPONSE", 502, true);
     try {
-      return structuredMusicSchema.parse(JSON.parse(content));
+      const { value } = jsonValidator.parse(content);
+      return structuredMusicSchema.parse(value);
     } catch (error) {
-      console.error("[ai] invalid structured composition", { model: this.model, error: error instanceof Error ? error.message : "invalid response" });
+      console.error("[ai] invalid structured composition", { model: this.model, responseBytes: Buffer.byteLength(content, "utf8"), error: error instanceof Error ? error.message : "invalid response" });
       throw new AiOrchestrationError("The music model returned an invalid composition. Please try again.", "AI_INVALID_RESPONSE", 502, true);
     }
   }

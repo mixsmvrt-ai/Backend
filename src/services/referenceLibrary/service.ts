@@ -319,9 +319,9 @@ export function rankReferenceEntries(entries: ReferenceFeatures[], query: Refere
     .sort((left, right) => right.score - left.score || left.entry.filePath.localeCompare(right.entry.filePath));
 }
 
-export function formatReferenceContext(references: RetrievedReference[], secondaryEventLimit = 64) {
+export function formatReferenceContext(references: RetrievedReference[], primaryEventLimit = 256, secondaryEventLimit = 24) {
   return references.map((reference, index) => {
-    const eventLimit = index === 0 ? reference.midiEvents.length : Math.min(reference.midiEvents.length, secondaryEventLimit);
+    const eventLimit = index === 0 ? Math.min(reference.midiEvents.length, primaryEventLimit) : Math.min(reference.midiEvents.length, secondaryEventLimit);
     const events = reference.midiEvents.slice(0, eventLimit);
     return [
       `REFERENCE ${index + 1} (${index === 0 ? "PRIMARY" : "SECONDARY"}): ${reference.collection}/${reference.fileName}`,

@@ -51,7 +51,7 @@ describe("reference event context", () => {
     })));
     const secondary = { ...reference("secondary.mid", primary.midiEvents), influence: 0.2 };
 
-    const context = formatReferenceContext([primary, secondary], 1);
+    const context = formatReferenceContext([primary, secondary], 3, 1);
 
     expect(context).toContain("PRIMARY");
     expect(context).toContain("SECONDARY");
