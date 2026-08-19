@@ -22,6 +22,12 @@ describe("generation retry policy", () => {
     expect(shouldRetryGenerationAttempt(timeout, 0, 1)).toBe(false);
   });
 
+  it("does not retry malformed model output", () => {
+    const invalid = new AiOrchestrationError("Invalid composition.", "AI_INVALID_RESPONSE", 502, true);
+
+    expect(shouldRetryGenerationAttempt(invalid, 0, 1)).toBe(false);
+  });
+
   it("still retries retryable non-timeout failures", () => {
     const transient = new AiOrchestrationError("Temporary provider failure.", "AI_PROVIDER_TEMPORARY_FAILURE", 503, true);
 
