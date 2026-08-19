@@ -46,7 +46,7 @@ export function shouldRetryGenerationAttempt(error: unknown, attempt: number, ma
   return error instanceof Error && (error as Error & { retryable?: boolean }).retryable === true;
 }
 
-export async function orchestrateGeneration(userId: string, input: OrchestrationInput) {
+export async function orchestrateGeneration(userId: string, input: OrchestrationInput, requestSignal?: AbortSignal) {
   if (!env.AI_PROVIDER_BASE_URL || !env.AI_PROVIDER_API_KEY) throw new Error("AI generation is unavailable because the provider is not configured.");
   const workflow = input.workflow ?? "text_to_midi";
   if (workflow === "voice_to_midi") await assertPlusMembership(userId);
@@ -112,6 +112,9 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
       attemptedModel = model;
       for (let attempt = 0; attempt <= env.AI_QUALITY_RETRIES; attempt += 1) {
         const controller = new AbortController();
+        const abortFromRequest = () => controller.abort();
+        if (requestSignal?.aborted) throw new AiOrchestrationError("MIDI generation was cancelled.", "AI_CANCELLED", 499);
+        requestSignal?.addEventListener("abort", abortFromRequest, { once: true });
         const timer = setTimeout(() => controller.abort(), env.AI_REQUEST_TIMEOUT_MS);
         try {
           const provider = new OpenAiCompatibleProvider(env.AI_PROVIDER_BASE_URL, env.AI_PROVIDER_API_KEY, model);
@@ -121,6 +124,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
           usedModel = model;
           break;
         } catch (error) {
+          if (requestSignal?.aborted) throw new AiOrchestrationError("MIDI generation was cancelled.", "AI_CANCELLED", 499);
           lastError = error;
           if (error instanceof Error && /AI_(NOTE_FORM_INCOMPLETE|STRUCTURE_INCOMPLETE|INVALID_RESPONSE)/.test(String((error as Error & { code?: string }).code ?? ""))) {
             qualityFeedback = error.message;
@@ -129,6 +133,7 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
           if (shouldRetryGenerationAttempt(error, attempt, env.AI_QUALITY_RETRIES)) continue;
           break;
         } finally {
+          requestSignal?.removeEventListener("abort", abortFromRequest);
           clearTimeout(timer);
         }
       }

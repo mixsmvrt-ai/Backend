@@ -12,6 +12,7 @@ const projectSchema = z.object({ title: z.string().trim().min(1).max(120), descr
 const patchSchema = projectSchema.partial().extend({ isFavorite: z.boolean().optional(), archived: z.boolean().optional() });
 const messageSchema = z.object({
 	content: z.string().trim().min(1).max(2000),
+	replaceMessageId: z.string().uuid().optional(),
 	generation: z.object({
 		kind: z.enum(["melody", "chords", "chords_and_melody", "counter_melody", "bassline", "drums", "full_composition"]).optional(),
 		key: z.string().max(12).optional(),
@@ -55,6 +56,26 @@ function inferGenerationKind(prompt: string) {
 	if (/\b(counter|answer)\b/i.test(prompt)) return "counter_melody" as const;
 	if (/\b(drum|drums|percussion)\b/i.test(prompt)) return "drums" as const;
 	return "melody" as const;
+}
+
+async function removeReplacedMessage(db: ReturnType<typeof requireSupabase>, projectId: string, userId: string, messageId: string) {
+	const { data: source, error: sourceError } = await db.from("project_messages").select("id, role, generation_id, created_at").eq("id", messageId).eq("project_id", projectId).eq("user_id", userId).single();
+	if (sourceError || !source || source.role !== "user") throw new Error("The message to replace was not found.");
+	const { data: following, error: followingError } = await db.from("project_messages").select("id, generation_id").eq("project_id", projectId).eq("user_id", userId).gt("created_at", source.created_at);
+	if (followingError) throw followingError;
+	const generationIds = [...new Set([source.generation_id, ...(following ?? []).map((message) => message.generation_id)].filter(Boolean))] as string[];
+	for (const generationId of generationIds) {
+		const { data: files } = await db.from("generation_files").select("storage_path").eq("generation_id", generationId).eq("user_id", userId);
+		if (files?.length) {
+			const paths = files.map((file) => file.storage_path);
+			await db.storage.from("midi-exports").remove(paths);
+			await db.from("downloads").update({ deleted_at: new Date().toISOString() }).eq("user_id", userId).in("storage_path", paths);
+		}
+		await db.from("generation_files").delete().eq("generation_id", generationId).eq("user_id", userId);
+		await db.from("generations").delete().eq("id", generationId).eq("user_id", userId);
+	}
+	const { error: deleteError } = await db.from("project_messages").delete().eq("project_id", projectId).eq("user_id", userId).gte("created_at", source.created_at);
+	if (deleteError) throw deleteError;
 }
 
 export async function read(request: AuthRequest, response: Response) {
@@ -131,6 +152,7 @@ export async function createMessage(request: AuthRequest, response: Response) {
 		const { data: projectData, error: projectError } = await db.from("projects").select("id, genre, mood, bpm, musical_key").eq("id", projectId).eq("user_id", request.user!.id).is("deleted_at", null).single();
 		const project = projectData as ProjectConversationRow | null;
 		if (projectError || !project) return response.status(404).json({ error: "Project not found" });
+		if (parsed.data.replaceMessageId) await removeReplacedMessage(db, projectId, request.user!.id, parsed.data.replaceMessageId);
 
 		const { data: recentMessages, error: recentMessagesError } = await db.from("project_messages").select("role, content").eq("project_id", projectId).eq("user_id", request.user!.id).order("created_at", { ascending: false }).limit(6);
 		if (recentMessagesError) throw recentMessagesError;
@@ -153,8 +175,15 @@ export async function createMessage(request: AuthRequest, response: Response) {
 				mood: parsed.data.generation?.mood ?? project.mood ?? undefined,
 			});
 
-			const generation = await orchestrateGeneration(request.user!.id, generationInput);
-			return response.status(201).json({ data: { mode: "generation", generation } });
+			const requestAbortController = new AbortController();
+			const abortGeneration = () => requestAbortController.abort();
+			request.once("close", abortGeneration);
+			try {
+				const generation = await orchestrateGeneration(request.user!.id, generationInput, requestAbortController.signal);
+				return response.status(201).json({ data: { mode: "generation", generation } });
+			} finally {
+				request.off("close", abortGeneration);
+			}
 		}
 
 		const { error: userMessageError } = await db.from("project_messages").insert({ project_id: projectId, user_id: request.user!.id, role: "user", content: parsed.data.content });
