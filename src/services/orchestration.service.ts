@@ -25,7 +25,7 @@ function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined
 export function titleFromGenerationRequest(prompt: string) {
   const cleaned = prompt
     .trim()
-    .replace(/^(please\s+)?(create|generate|make|write|compose|produce|give me)\s+(a\s+|an\s+|the\s+)?/i, "")
+    .replace(/^(please\s+)?(i\s+(want|need)|i'd\s+like|can\s+you|create|generate|make|write|compose|produce|give me)\s+(a\s+|an\s+|the\s+)?/i, "")
     .split(/[.!?\n]/)[0]
     .replace(/[^a-zA-Z0-9\s_-]+/g, "")
     .replace(/\s+/g, " ")
@@ -35,8 +35,35 @@ export function titleFromGenerationRequest(prompt: string) {
   return cleaned || "MidiFlow Idea";
 }
 
-function midiFileNameFromRequest(prompt: string) {
-  return `${titleFromGenerationRequest(prompt)}.mid`;
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function midiTitleFromGenerationRequest(prompt: string, kind: OrchestrationInput["kind"], music: { key: string; scale: string; tempo: number }) {
+  const text = prompt.toLowerCase();
+  const instrument = /spanish|flamenco|nylon|classical\s+guitar/.test(text)
+    ? "Spanish Guitar"
+    : /acoustic\s+guitar|steel[- ]string/.test(text)
+      ? "Acoustic Guitar"
+      : /electric\s+guitar|clean\s+guitar/.test(text)
+        ? "Electric Guitar"
+        : /\b piano|\bpiano\b|keys?/.test(text)
+          ? "Piano"
+          : /\b808\b|sub bass|\bbass\b/.test(text)
+            ? "808"
+            : /bells?|bell pluck|mallet|music box/.test(text)
+              ? "Bell"
+              : /pads?|atmosphere/.test(text)
+                ? "Pad"
+                : null;
+  const role = kind === "chords_and_melody" ? "Chords + Melody" : kind === "full_composition" ? "Full Composition" : titleCase(kind.replace(/_/g, " "));
+  const tonic = music.key.replace(/\s+(major|minor|maj|min)$/i, "").trim();
+  const tonality = `${tonic} ${titleCase(music.scale)}`.trim();
+  return `${instrument ? `${instrument} ` : ""}${role} ${tonality} - ${music.tempo} BPM`.replace(/\s+/g, " ").trim();
+}
+
+function midiFileNameFromRequest(prompt: string, kind: OrchestrationInput["kind"], music: { key: string; scale: string; tempo: number }) {
+  return `${midiTitleFromGenerationRequest(prompt, kind, music)}.mid`;
 }
 
 export function shouldRetryGenerationAttempt(error: unknown, attempt: number, maxRetries: number) {
@@ -145,9 +172,9 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
     music = qualityGate.music;
     console.info("[ai] reference quality gate", { simplified: qualityGate.simplified, beforeNotes: qualityGate.before.noteCount, afterNotes: qualityGate.after.noteCount, referenceEvents: referenceBlend.retrieved[0]?.midiEvents.length ?? 0 });
     const { error: parametersError } = await db.from("generation_parameters").insert({ generation_id: generation.id, user_id: userId, genre: resolvedInput.genre ?? null, mood: resolvedInput.mood ?? null, musical_key: music.key, scale: music.scale, tempo: music.tempo, time_signature: music.timeSignature.join("/"), length_bars: input.lengthBars, complexity: input.complexity, variation_amount: input.variationAmount, random_seed: input.randomSeed ?? null }); if (parametersError) throw parametersError;
-    const requestTitle = titleFromGenerationRequest(input.prompt);
+    const requestTitle = midiTitleFromGenerationRequest(input.prompt, input.kind, music);
     const namedMusic = { ...music, trackName: requestTitle };
-    const file = writeMidi(namedMusic); const fileName = midiFileNameFromRequest(input.prompt); const storagePath = `${userId}/${generation.id}/${fileName}`;
+    const file = writeMidi(namedMusic); const fileName = midiFileNameFromRequest(input.prompt, input.kind, music); const storagePath = `${userId}/${generation.id}/${fileName}`;
     const { error: storageError } = await db.storage.from("midi-exports").upload(storagePath, file, { contentType: "audio/midi", upsert: false }); if (storageError) throw storageError;
     const { error: fileError } = await db.from("generation_files").insert({ generation_id: generation.id, user_id: userId, storage_path: storagePath, file_name: fileName, mime_type: "audio/midi", file_size_bytes: file.length }); if (fileError) throw fileError;
     await midiAnalysisService.persistAnalysis(file, { generationId: generation.id, projectId: input.projectId ?? null, userId, fileName, genre: input.genre ?? null, mood: input.mood ?? null });

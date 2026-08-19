@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AiOrchestrationError } from "./ai/types.js";
-import { shouldRetryGenerationAttempt, titleFromGenerationRequest } from "./orchestration.service.js";
+import { midiTitleFromGenerationRequest, shouldRetryGenerationAttempt, titleFromGenerationRequest } from "./orchestration.service.js";
 
 describe("generation request titles", () => {
   it("uses the user's request instead of a model-invented title", () => {
@@ -12,6 +12,10 @@ describe("generation request titles", () => {
     expect(title).toMatch(/^emotional Jamaican guitar melody/);
     expect(title.length).toBeLessThanOrEqual(64);
     expect(title).not.toMatch(/[.!?]/);
+  });
+
+  it("creates a professional instrument-role-tonality title", () => {
+    expect(midiTitleFromGenerationRequest("I want Spanish guitar melody", "melody", { key: "A", scale: "Minor", tempo: 98 })).toBe("Spanish Guitar Melody A Minor - 98 BPM");
   });
 });
 
