@@ -26,7 +26,22 @@ export const app = express();
 void musicBrainService.preload();
 void referenceLibraryService.preload();
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ALLOWED_ORIGINS.split(","), credentials: true }));
+const allowedCorsOrigins = new Set([
+	...env.CORS_ALLOWED_ORIGINS.split(","),
+	env.FRONTEND_URL,
+	"https://www.getmidiflow.com",
+	"https://getmidiflow.com",
+].map((origin) => origin.trim().replace(/\/$/, "").toLowerCase()).filter(Boolean));
+app.use(cors({
+	origin: (requestOrigin, callback) => {
+		if (!requestOrigin || allowedCorsOrigins.has(requestOrigin.trim().replace(/\/$/, "").toLowerCase())) {
+			callback(null, true);
+			return;
+		}
+		callback(new Error("Origin is not allowed by CORS"));
+	},
+	credentials: true,
+}));
 app.use(express.json({ limit: "1mb" }));
 app.use(pinoHttp({ redact: ["req.headers.authorization", "req.headers.cookie"] }));
 app.get("/", (_request, response) => response.json({ service: "midiflow-backend", status: "ok" }));
