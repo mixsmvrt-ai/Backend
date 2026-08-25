@@ -16,6 +16,7 @@ import { formatReferenceContext, referenceLibraryService } from "./referenceLibr
 import { AiOrchestrationError } from "./ai/types.js";
 import { applyReferenceQualityGate } from "./referenceQuality.service.js";
 import { constrainNotesToInstrument } from "./instrumentProfiles.js";
+import { requestsEarlierProjectContext } from "./projectContext.js";
 
 function workflowCreditCost(workflow: OrchestrationInput["workflow"] | undefined) {
   if (workflow === "voice_to_midi") return VOICE_TO_MIDI_CREDIT_COST;
@@ -82,11 +83,13 @@ export async function orchestrateGeneration(userId: string, input: Orchestration
   const selection = await modelSelector.forUser(userId);
   const db = requireSupabase();
   let contextualPrompt = input.prompt;
-  if (input.projectId) {
+  if (input.projectId && requestsEarlierProjectContext(input.prompt)) {
     const { data: messages, error: messagesError } = await db.from("project_messages").select("role, content").eq("project_id", input.projectId).eq("user_id", userId).order("created_at", { ascending: false }).limit(8);
     if (messagesError) throw messagesError;
     const history = (messages ?? []).reverse().map((message) => `${message.role}: ${message.content}`).join("\n");
     contextualPrompt = history ? `Project conversation so far:\n${history}\n\nLatest direction: ${input.prompt}` : input.prompt;
+  }
+  if (input.projectId) {
     const { error: userMessageError } = await db.from("project_messages").insert({ project_id: input.projectId, user_id: userId, role: "user", content: input.prompt });
     if (userMessageError) throw userMessageError;
   }

@@ -9,6 +9,7 @@ import type { AiContextRepository, AiGenerateInput, BuiltAiContext } from "./typ
 import { DEFAULT_PROMPT_HISTORY_LIMIT, PROMPT_INJECTION_PATTERNS } from "./constants.js";
 import { AiOrchestrationError } from "./types.js";
 import { referenceLibraryService } from "../referenceLibrary/service.js";
+import { requestsEarlierProjectContext } from "../projectContext.js";
 
 type InterpretationRow = {
   id: string;
@@ -73,7 +74,7 @@ export class ContextBuilder {
         ? await this.repository.latestInterpretationForProject(userId, input.projectId)
         : null;
     const artist = await artistInspirationService.analyze({ prompt: sanitizedPrompt, userId });
-    const projectHistory = input.projectId ? await this.repository.projectMessages(userId, input.projectId) : [];
+    const projectHistory = input.projectId && requestsEarlierProjectContext(input.prompt) ? await this.repository.projectMessages(userId, input.projectId) : [];
     const contextualPrompt = projectHistory.length
       ? `Project conversation so far:\n${projectHistory.join("\n")}\n\nLatest direction: ${artist.sanitizedPrompt}`
       : artist.sanitizedPrompt;

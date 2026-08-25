@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabase } from "../config/supabase.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { orchestrateGeneration } from "../services/orchestration.service.js";
+import { requestsEarlierProjectContext } from "../services/projectContext.js";
 import { generateProjectConversationReply } from "../services/projectConversationAi.service.js";
 import { orchestrationSchema } from "../domain/music.js";
 import { promptRefinementEngine, promptRefinementInputSchema, type PromptMemory } from "../services/promptRefinement.service.js";
@@ -134,7 +135,9 @@ export async function refine(request: AuthRequest, response: Response) {
 			instrument: typeof remembered.instrument === "string" ? remembered.instrument : typeof remembered.instrumentType === "string" ? remembered.instrumentType : null,
 			complexity: typeof remembered.complexity === "string" ? remembered.complexity : null,
 		};
-		const previousPrompt = versions?.find((version) => typeof version.prompt === "string")?.prompt ?? "";
+		const previousPrompt = requestsEarlierProjectContext(parsed.data.prompt)
+			? versions?.find((version) => typeof version.prompt === "string")?.prompt ?? ""
+			: "";
 		response.json({ data: promptRefinementEngine.refine(`${parsed.data.prompt} ${previousPrompt}`, memory, parsed.data.kind) });
 	} catch (error) {
 		return failure(response, error);
